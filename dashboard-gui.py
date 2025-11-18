@@ -10,7 +10,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont, QPixmap, QIcon, QFontDatabase, QColor, QPainter
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtSvg import QSvgRenderer
-from kartel_styles import load_stylesheet, get_default_stylesheet
 
 class KartelDashboard(QWidget):
     def __init__(self):
@@ -615,13 +614,51 @@ class KartelDashboard(QWidget):
     # --- STYLESHEET (QSS) ---
     def set_stylesheet(self):
         """Terapkan stylesheet dari file eksternal"""
-        stylesheet = load_stylesheet("styles.qss")
+        stylesheet = self.load_stylesheet("styles.qss")
         
         # Jika file tidak ditemukan, gunakan style default
         if not stylesheet:
-            stylesheet = get_default_stylesheet()
+            stylesheet = self.get_default_stylesheet()
             
         self.setStyleSheet(stylesheet)
+    
+    def load_stylesheet(self, file_path="styles.qss"):
+        """Memuat stylesheet dari file QSS eksternal"""
+        try:
+            # Coba beberapa lokasi untuk file stylesheet
+            possible_paths = [
+                file_path,                           # Root folder
+                f"asset/style/{file_path}",          # Asset/style folder
+                f"asset/{file_path}",                # Asset folder
+                f"style/{file_path}"                 # Style folder
+            ]
+            
+            for style_file in possible_paths:
+                if os.path.exists(style_file):
+                    with open(style_file, 'r', encoding='utf-8') as file:
+                        stylesheet = file.read()
+                    print(f"✅ Stylesheet berhasil dimuat dari: {style_file}")
+                    return stylesheet
+            
+            raise FileNotFoundError(f"File tidak ditemukan di semua lokasi")
+            
+        except Exception as e:
+            print(f"⚠ Error saat memuat stylesheet: {e}")
+            return ""
+    
+    def get_default_stylesheet(self):
+        """Fallback stylesheet jika file eksternal tidak tersedia"""
+        return """
+        QWidget {
+            font-family: 'Manrope', 'Arial', sans-serif;
+            font-size: 14px;
+            color: #374151;
+        }
+        
+        KartelDashboard {
+            background-color: #f8f9fa;
+        }
+        """
 
 if __name__ == "__main__":
     # Konfigurasi untuk pyqtgraph agar garis terlihat halus
