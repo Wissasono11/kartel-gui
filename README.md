@@ -25,7 +25,7 @@ pip install -r requirements.txt
 ### 2. Jalankan Dashboard
 ```bash
 # Dashboard lengkap dengan fitur real-time:
-python dashboard_functional.py
+python kartel_dashboard.py
 
 # Dashboard static untuk preview:
 python dashboard-gui.py
@@ -34,7 +34,7 @@ python dashboard-gui.py
 ### 3. File Structure
 ```
 📁 KARTEL/
-├── 📄 dashboard_functional.py    # Main app (RECOMMENDED)
+├── 📄 kartel_dashboard.py    # Main app (RECOMMENDED)
 ├── 📄 kartel_data.py            # Data simulation
 ├── 📄 kartel_controller.py      # Logic controller
 ├── 📁 asset/
@@ -144,7 +144,7 @@ cd kartel-gui
 pip install -r requirements.txt
 
 # Jalankan dashboard fungsional
-python dashboard_functional.py
+python kartel_dashboard.py
 
 # Atau jalankan dashboard static
 python dashboard-gui.py
@@ -162,7 +162,7 @@ numpy>=1.21.0
 ```
 KARTEL/
 ├── 📄 dashboard-gui.py          # Dashboard static (tampilan saja)
-├── 🚀 dashboard_functional.py   # Dashboard fungsional (dengan data dummy)
+├── 🚀 kartel_dashboard.py   # Dashboard fungsional (dengan data dummy)
 ├── 🎮 kartel_controller.py      # Logic controller untuk GUI
 ├── 📊 kartel_data.py           # Data manager dan simulasi sensor
 ├── 🎨 asset/
@@ -263,7 +263,7 @@ kartel/status/devices        # {"heater": true, "humidifier": false, "motor": "i
 #### 🎮 **Mode Demo vs Production**
 ```python
 # Mode Demo (saat ini) - untuk testing UI
-python dashboard_functional.py  # Data dummy dengan simulasi real-time
+python kartel_dashboard.py  # Data dummy dengan simulasi real-time
 
 # Mode Production (integrasi ESP32)
 python dashboard-gui.py         # Static UI, siap untuk integrasi MQTT
@@ -272,7 +272,7 @@ python dashboard-gui.py         # Static UI, siap untuk integrasi MQTT
 ### 🎯 Cara Penggunaan
 
 #### 🚀 **Quick Demo**
-1. **Start**: `python dashboard_functional.py`
+1. **Start**: `python kartel_dashboard.py`
 2. **Monitoring**: Lihat data real-time di card vital dan grafik  
 3. **Interaction**: 
    - Klik profil inkubasi untuk auto-apply setpoint
@@ -308,14 +308,14 @@ ls asset/svg/  # Should show: wifi.svg, wifi-notconnect.svg, temperature.svg, et
 - 🔧 **Fix**: Install Manrope font di sistem atau add ke folder fonts/
 
 **Grafik tidak update**
-- 🔧 **Check**: Pastikan menggunakan `dashboard_functional.py` bukan `dashboard-gui.py`
+- 🔧 **Check**: Pastikan menggunakan `kartel_dashboard.py` bukan `dashboard-gui.py`
 - 🔧 **Restart**: Close dan buka kembali aplikasi
 
 #### 🐛 **Debug Mode**
 ```python
 # Enable verbose logging
 export KARTEL_DEBUG=1
-python dashboard_functional.py
+python kartel_dashboard.py
 
 # Output akan menampilkan:
 # ✅ Font aplikasi: Manrope/Arial fallback  
@@ -328,7 +328,7 @@ python dashboard_functional.py
 #### 🏗️ **Architecture**
 ```
 ┌─────────────────────────┐
-│   dashboard_functional.py   │ ← Main GUI (PyQt6)
+│   kartel_dashboard.py   │ ← Main GUI (PyQt6)
 │         (View)          │
 └───────────┬─────────────┘
             │ Signals/Slots
