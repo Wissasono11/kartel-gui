@@ -1,0 +1,317 @@
+/* KARTEL Dashboard Stylesheet */
+/* Font: Manrope - Modern & Clean Typography */
+
+/* --- Font Utama --- */
+QWidget {
+    font-family: 'Manrope', 'Manrope Regular', 'Manrope-Regular', 'Arial', sans-serif;
+    font-size: 14px;
+    color: #374151; /* Gray-700 */
+}
+
+/* --- Latar Belakang Utama --- */
+KartelDashboard {
+    background-color: #f8f9fa; /* Latar belakang abu-abu sangat muda */
+}
+
+/* --- Judul Bagian (STATUS SISTEM, GRAFIK, KONFIGURASI) --- */
+QLabel#sectionTitle {
+    font-size: 18px;
+    font-weight: 800; /* ExtraBold */
+    color: #111827; /* Gray-900 */
+}
+
+/* --- Ikon Bulat di Judul --- */
+QLabel#statusIconCircle {
+    background-color: #eef2ff; /* Indigo-100 */
+    border-radius: 14px; /* Setengah dari 28px */
+    padding: 6px;
+    qproperty-alignment: 'AlignCenter';
+}
+
+/* --- 1. Header --- */
+#headerCard {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 8px 16px;
+    border: 1px solid #e5e7eb;
+}
+QLabel#headerTitle {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+}
+QLabel#headerSubtitle {
+    font-size: 14px;
+    color: #6b7280; /* Gray-500 */
+}
+QPushButton#statusNotConnected {
+    background-color: #ef4444; /* Red-500 */
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+QPushButton#statusDay {
+    background-color: #eef2ff; /* Indigo-100 */
+    color: #4f46e5; /* Indigo-600 */
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+/* --- 2. Card Vital --- */
+QFrame#suhuCard, QFrame#kelembabanCard {
+    border-radius: 16px;
+    padding: 16px;
+}
+
+/* Gradient Card Suhu (Kuning-Oranye) */
+QFrame#suhuCard {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #FFD54F, stop:0.5 #FFC107, stop:1 #FF8F00);
+}
+/* Gradient Card Kelembaban (Ungu) */
+QFrame#kelembabanCard {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #7C3AED, stop:0.5 #5A3FFF, stop:1 #4338CA);
+}
+
+/* Teks di dalam Card Vital */
+#suhuCard QLabel { color: #1f2937; } /* Teks gelap di card kuning */
+#kelembabanCard QLabel { color: #ffffff; } /* Teks putih di card ungu */
+
+QLabel.vitalTitle, QLabel#vitalTitle {
+    font-size: 24px;
+    font-weight: 700;
+}
+QLabel#vitalCurrentDesc {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+QLabel#vitalCurrentValue {
+    font-size: 48px;
+    font-weight: 800;
+}
+
+/* Box Target di dalam Card Vital */
+#suhuCard QFrame#targetBox {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+#kelembabanCard QFrame#targetBox {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+QLabel#vitalTarget {
+    font-size: 16px;
+    font-weight: 700;
+}
+QLabel#vitalTargetDesc {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* --- 3. Status Sistem --- */
+QFrame#statusCard {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #e5e7eb; /* Gray-200 */
+}
+QLabel#statusCardTitle {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+/* Badge Status */
+QLabel#statusAktif, QLabel#statusNonAktif, QLabel#statusMenunggu, QLabel#statusTimer {
+    font-weight: 700;
+    font-size: 14px;
+    border-radius: 6px;
+    padding: 6px 0px;
+}
+QLabel#statusAktif {
+    background-color: #d1fae5; /* Green-100 */
+    color: #065f46; /* Green-800 */
+}
+QLabel#statusNonAktif {
+    background-color: #fee2e2; /* Red-100 */
+    color: #991b1b; /* Red-800 */
+}
+QLabel#statusMenunggu {
+    background-color: #fffbeb; /* Yellow-100 */
+    color: #92400e; /* Yellow-800 */
+}
+QLabel#statusTimer {
+    background-color: #e0f2fe; /* Sky-100 */
+    color: #0c4a6e; /* Sky-800 */
+    font-size: 18px;
+}
+
+/* --- 4. Grafik --- */
+QFrame#graphCard {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+}
+
+/* --- 5. Panel Konfigurasi --- */
+QScrollArea#configScrollArea {
+    border: none;
+}
+QWidget#configWidget {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+}
+QLabel#formSectionTitle {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111827;
+    margin-top: 8px;
+}
+
+/* Label untuk input fields di panel konfigurasi */
+#configWidget QLabel {
+    font-weight: 700; /* Bold untuk readability yang lebih baik */
+    color: #374151; /* Warna yang kontras */
+    font-size: 14px;
+}
+
+/* Input Fields & Dropdown */
+QLineEdit, QComboBox {
+    background-color: #f9fafb; /* Gray-50 */
+    border: 1px solid #d1d5db; /* Gray-300 */
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 14px;
+}
+QLineEdit:focus, QComboBox:focus {
+    border-color: #4f46e5; /* Indigo-600 */
+    background-color: #ffffff;
+}
+
+/* Custom Dropdown Arrow */
+QComboBox::drop-down {
+    border: none;
+    width: 30px;
+    background: transparent;
+}
+QComboBox::down-arrow {
+    image: url(asset/svg/dropdown.svg);
+    width: 12px;
+    height: 12px;
+}
+QComboBox::down-arrow:on {
+    /* Rotasi saat dropdown terbuka */
+    image: url(asset/svg/dropdown.svg);
+}
+
+/* Tombol-tombol di Konfigurasi */
+QPushButton {
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px;
+    border: none;
+}
+QPushButton#applyButton {
+    background-color: #5A3FFF; /* Indigo-600 */
+    color: white;
+}
+QPushButton#applyButton:hover {
+    background-color: #4338ca; /* Indigo-700 */
+}
+
+/* Kontrol Manual - Tombol Toggle Pemanas */
+QPushButton#heaterButton {
+    background-color: #FEF3C7;
+    border: 2px solid #F59E0B;
+    border-radius: 12px;
+    color: #92400E;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 12px 16px;
+    text-align: center;
+    min-height: 20px;
+}
+QPushButton#heaterButton:hover {
+    background-color: #FDE68A;
+}
+QPushButton#heaterButton:pressed {
+    background-color: #F59E0B;
+    color: white;
+}
+
+/* Kontrol Manual - Tombol Toggle Humidifier */
+QPushButton#humidifierButton {
+    background-color: #DDD6FE;
+    border: 2px solid #8B5CF6;
+    border-radius: 12px;
+    color: #5B21B6;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 12px 16px;
+    text-align: center;
+    min-height: 20px;
+}
+QPushButton#humidifierButton:hover {
+    background-color: #C4B5FD;
+}
+QPushButton#humidifierButton:pressed {
+    background-color: #8B5CF6;
+    color: white;
+}
+
+QPushButton#cancelButton {
+    background-color: #ffffff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+QPushButton#cancelButton:hover {
+    background-color: #f9fafb;
+}
+
+QPushButton#connectButton {
+    background-color: #10b981; /* Green-500 */
+    color: white;
+}
+QPushButton#connectButton:hover {
+    background-color: #059669; /* Green-600 */
+}
+
+/* Info Box */
+QFrame#infoBox {
+    background-color: #E6DDFF;
+    border: 1px solid #D6C7FF;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 8px 0px;
+}
+#infoBox QLabel {
+    color: #0c4a6e; /* Sky-800 */
+}
+
+/* Info Box - Header Title */
+#infoBox QLabel#infoHeaderTitle {
+    color: #1F2937;
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0px;
+}
+
+/* Info Box - Content Text */
+#infoBox QLabel#infoContentText {
+    color: #5A3FFF;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0px;
+}
+
+/* Divider */
+QFrame#divider {
+    border-color: #e5e7eb;
+}
