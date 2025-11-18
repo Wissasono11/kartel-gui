@@ -307,8 +307,11 @@ QFrame#infoBox {
 #infoBox QLabel#infoContentText {
     color: #5A3FFF;
     font-size: 14px;
+    font-weight: 500;
     line-height: 1.5;
     margin: 0px;
+    qproperty-alignment: 'AlignJustify';
+    qproperty-wordWrap: true;
 }
 
 /* Divider */

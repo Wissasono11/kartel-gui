@@ -331,54 +331,126 @@ class KartelDashboard(QWidget):
         title_layout.addStretch()
         graph_main_layout.addLayout(title_layout)
         
-        # Plot Widget
+        # Plot Widget dengan tooltip
         plot_widget = pg.PlotWidget()
-        plot_widget.setBackground('w') # Latar belakang putih
-        plot_widget.setMenuEnabled(False) # Sembunyikan menu klik kanan
+        plot_widget.setBackground('#ffffff')  # Background putih
+        plot_widget.setMenuEnabled(False)  # Sembunyikan menu klik kanan
+        plot_widget.showGrid(x=True, y=True, alpha=0.3)
 
-        # Data Contoh
-        hours = [20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-        suhu_data = [37.5, 37.8, 38.0, 38.1, 38.2, 38.5, 38.7, 38.8, 38.5, 38.3, 38.2, 38.0, 37.8, 37.7, 37.8, 37.9, 38.0, 38.2, 38.1, 38.0, 37.9, 37.8, 38.0]
-        kelembaban_data = [58, 59, 60, 61, 62, 63, 64, 65, 64, 63, 62, 61, 60.5, 60.3, 59.8, 59.5, 59.0, 58.5, 58.0, 58.2, 58.4, 58.6, 58.8]
+        # Data Contoh (disesuaikan dengan format gambar)
+        hours = list(range(20, 24)) + list(range(0, 19))  # 20-23, 00-18
+        time_labels = [f"{h:02d}.22" for h in hours]
+        x_data = list(range(len(hours)))  # Index untuk plotting
+        suhu_data = [37.8, 37.8, 38.0, 38.1, 38.2, 38.5, 38.7, 38.8, 38.5, 38.3, 38.2, 38.0, 37.8, 37.7, 37.8, 37.9, 38.0, 38.2, 38.1, 38.0, 37.9, 37.8, 38.0]
+        kelembaban_data = [60, 59, 60, 61, 62, 63, 64, 65, 64, 63, 62, 61, 60.5, 60.3, 59.8, 59.5, 59.0, 58.5, 58.0, 58.2, 58.4, 58.6, 60.3]
 
-        # Penyesuaian Sumbu X (Waktu)
-        x_ticks = [list(zip(range(len(hours)), [f"{h:02d}.22" for h in hours]))]
+        # Setup sumbu
+        plot_widget.setYRange(30, 45)  # Range untuk suhu
+        plot_widget.setXRange(-1, len(hours))
+        
+        # Sumbu X (Waktu)
+        x_ticks = [list(zip(x_data, time_labels))]
         ax_bottom = plot_widget.getAxis('bottom')
         ax_bottom.setTicks(x_ticks)
-        ax_bottom.setTextPen(QColor("#6b7280")) # Warna abu-abu
+        ax_bottom.setTextPen(QColor("#6b7280"))
+        ax_bottom.setPen(QColor("#e5e7eb"))
 
         # Sumbu Y Kiri (Suhu)
         ax_left = plot_widget.getAxis('left')
-        ax_left.setLabel("Suhu (°C)", color="#f59e0b")
-        ax_left.setTextPen(QColor("#f59e0b"))
-        plot_widget.plot(hours, suhu_data, pen=pg.mkPen(color="#f59e0b", width=3), name="Suhu")
+        ax_left.setLabel("Suhu (°C)", color="#FFC107")
+        ax_left.setTextPen(QColor("#FFC107"))
+        ax_left.setPen(QColor("#e5e7eb"))
+        ax_left.setRange(30, 45)
 
-        # Sumbu Y Kanan (Kelembaban) - Ini sedikit rumit
-        p1 = plot_widget.getPlotItem()
-        p1.showGrid(x=True, y=True, alpha=0.3)
-        
-        # Buat ViewBox baru untuk sumbu Y kedua
-        v2 = pg.ViewBox()
-        p1.scene().addItem(v2)
+        # Plot garis suhu dengan styling yang sesuai gambar
+        suhu_plot = plot_widget.plot(
+            x_data, suhu_data, 
+            pen=pg.mkPen(color="#FFC107", width=3),
+            symbol='o', symbolSize=6, symbolBrush='#FFC107',
+            name="Suhu"
+        )
+
+        # Buat ViewBox kedua untuk kelembaban
+        view_box_2 = pg.ViewBox()
+        plot_widget.plotItem.scene().addItem(view_box_2)
+        view_box_2.setXRange(0, len(hours)-1)
+        view_box_2.setYRange(40, 80)
+
+        # Sumbu Y Kanan (Kelembaban)
         ax_right = pg.AxisItem('right')
-        v2.addItem(ax_right)
-        ax_right.setLabel("Kelembaban (%)", color="#4f46e5")
-        ax_right.setTextPen(QColor("#4f46e5"))
+        ax_right.setLabel("Kelembaban (%)", color="#5A3FFF")
+        ax_right.setTextPen(QColor("#5A3FFF"))
+        ax_right.setPen(QColor("#e5e7eb"))
+        ax_right.linkToView(view_box_2)
         
-        # Link sumbu X dan atur sumbu Y
-        v2.linkView(pg.ViewBox.XAxis, p1.getViewBox())
-        ax_right.linkToView(v2)
-        v2.setYRange(40, 80) # Sesuaikan rentang
+        plot_widget.plotItem.layout.addItem(ax_right, 2, 3)
+        view_box_2.linkView(pg.ViewBox.XAxis, plot_widget.plotItem.getViewBox())
+
+        # Plot garis kelembaban
+        kelembaban_plot = pg.PlotCurveItem(
+            x_data, kelembaban_data,
+            pen=pg.mkPen(color="#5A3FFF", width=3),
+        )
+        kelembaban_symbol = pg.ScatterPlotItem(
+            x_data, kelembaban_data,
+            symbol='o', size=6, brush='#5A3FFF'
+        )
+        view_box_2.addItem(kelembaban_plot)
+        view_box_2.addItem(kelembaban_symbol)
+
+        # Tooltip untuk hover
+        self.tooltip = QLabel(plot_widget)
+        self.tooltip.setStyleSheet("""
+            QLabel {
+                background-color: rgba(255, 255, 255, 0.95);
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 8px 12px;
+                color: #374151;
+                font-size: 12px;
+                font-weight: 600;
+            }
+        """)
+        self.tooltip.hide()
+
+        # Mouse move event untuk tooltip
+        def on_mouse_move(event):
+            if plot_widget.sceneBoundingRect().contains(event):
+                mouse_pos = plot_widget.plotItem.vb.mapSceneToView(event)
+                x_pos = int(mouse_pos.x())
+                
+                if 0 <= x_pos < len(hours):
+                    time_str = time_labels[x_pos]
+                    suhu_val = suhu_data[x_pos]
+                    kelembaban_val = kelembaban_data[x_pos]
+                    
+                    tooltip_text = f"""<div style="color: #6b7280; font-size: 11px; margin-bottom: 4px;">{time_str}</div>
+<div style="color: #5A3FFF;">Kelembaban (%): {kelembaban_val}</div>
+<div style="color: #FFC107;">Suhu (°C): {suhu_val}</div>"""
+                    
+                    self.tooltip.setText(tooltip_text)
+                    self.tooltip.adjustSize()
+                    
+                    # Position tooltip
+                    try:
+                        tooltip_pos = plot_widget.mapFromScene(event)
+                        self.tooltip.move(tooltip_pos.x() + 10, tooltip_pos.y() - 60)
+                        self.tooltip.show()
+                    except:
+                        pass
+                else:
+                    self.tooltip.hide()
+            else:
+                self.tooltip.hide()
+
+        plot_widget.scene().sigMouseMoved.connect(on_mouse_move)
+
+        # Update view saat resize
+        def update_views():
+            view_box_2.setGeometry(plot_widget.plotItem.vb.sceneBoundingRect())
         
-        # Plot data kelembaban di ViewBox kedua
-        plot_kelembaban = pg.PlotCurveItem(hours, kelembaban_data, pen=pg.mkPen(color="#4f46e5", width=3, style=Qt.PenStyle.DashLine), name="Kelembaban")
-        v2.addItem(plot_kelembaban)
-        
-        # Update view saat di-zoom
-        def update_v2_view():
-            v2.setGeometry(p1.getViewBox().sceneBoundingRect())
-        p1.getViewBox().sigResized.connect(update_v2_view)
-        update_v2_view()
+        plot_widget.plotItem.vb.sigResized.connect(update_views)
+        update_views()
 
         graph_main_layout.addWidget(plot_widget)
         return graph_widget_container
@@ -493,7 +565,7 @@ class KartelDashboard(QWidget):
         info_header_layout.setSpacing(8)
         
         info_icon = QLabel()
-        info_icon.setPixmap(self.load_svg_icon("information-mqtt.svg", QSize(20, 20)))
+        info_icon.setPixmap(self.load_svg_icon("information-mqtt.svg", QSize(24, 24)))
         
         info_title = QLabel("Informasi Koneksi")
         info_title.setObjectName("infoHeaderTitle")
