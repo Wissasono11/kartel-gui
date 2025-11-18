@@ -104,7 +104,7 @@ class KartelDashboardFunctional(QWidget):
     
     def init_ui(self):
         # Pengaturan Jendela Utama
-        self.setWindowTitle("KARTEL Dashboard - Functional")
+        self.setWindowTitle("KARTEL Dashboard")
         self.setGeometry(100, 100, 1400, 900)
         
         # Layout Utama
@@ -897,7 +897,24 @@ class KartelDashboardFunctional(QWidget):
         
         # Update motor
         if "motor" in status:
-            self.motor_status_label.setText(status["motor"]["status"])
+            motor_status = status["motor"]["status"]
+            rotation_time = status["motor"].get("rotation_time", 0)
+            
+            # Add rotation countdown to status text when rotating
+            if motor_status == "Berputar" and rotation_time > 0:
+                display_text = f"{motor_status} ({rotation_time}s)"
+            else:
+                display_text = motor_status
+                
+            self.motor_status_label.setText(display_text)
+            
+            # Set object names for 3 motor states: Menunggu, Berputar, Berhenti
+            if motor_status == "Berputar":
+                self.motor_status_label.setObjectName("statusMotorBerputar")
+            elif motor_status == "Berhenti":
+                self.motor_status_label.setObjectName("statusMotorBerhenti")
+            else:  # "Menunggu"
+                self.motor_status_label.setObjectName("statusMotorMenunggu")
         
         # Update timer
         if "timer" in status:

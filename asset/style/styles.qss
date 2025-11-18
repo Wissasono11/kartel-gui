@@ -134,7 +134,8 @@ QLabel#statusCardTitle {
 }
 
 /* Badge Status */
-QLabel#statusAktif, QLabel#statusNonAktif, QLabel#statusMenunggu, QLabel#statusTimer {
+QLabel#statusAktif, QLabel#statusNonAktif, QLabel#statusMenunggu, QLabel#statusTimer, 
+QLabel#statusMotorBerputar, QLabel#statusMotorBerhenti, QLabel#statusMotorMenunggu {
     font-weight: 700;
     font-size: 14px;
     border-radius: 6px;
@@ -149,6 +150,19 @@ QLabel#statusNonAktif {
     color: #991b1b; /* Red-800 */
 }
 QLabel#statusMenunggu {
+    background-color: #fffbeb; /* Yellow-100 */
+    color: #92400e; /* Yellow-800 */
+}
+/* Motor Status - 3 states only */
+QLabel#statusMotorBerputar {
+    background-color: #d1fae5; /* Green-100 - sama seperti statusAktif */
+    color: #065f46; /* Green-800 */
+}
+QLabel#statusMotorBerhenti {
+    background-color: #fee2e2; /* Red-100 - sama seperti statusNonAktif */
+    color: #991b1b; /* Red-800 */
+}
+QLabel#statusMotorMenunggu {
     background-color: #fffbeb; /* Yellow-100 */
     color: #92400e; /* Yellow-800 */
 }

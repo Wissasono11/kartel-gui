@@ -29,8 +29,17 @@ class KartelDataManager:
         self.device_status = {
             "pemanas": {"active": True, "status": "Aktif"},
             "humidifier": {"active": False, "status": "Non-aktif"},
-            "motor": {"active": False, "status": "Menunggu"},
+            "motor": {"active": False, "status": "Menunggu", "rotation_time": 0},
             "timer": {"countdown": "2:30:15"}
+        }
+        
+        # Motor pembalik schedule tracking
+        self.motor_schedule = {
+            "last_turn_time": time.time() - 3600,  # Last turn was 1 hour ago
+            "turn_interval": 14400,  # Turn every 4 hours (4*60*60 seconds)
+            "rotation_duration": 30,  # Motor runs for 30 seconds
+            "current_rotation_start": None,
+            "is_stopped": False  # Track if motor is manually stopped
         }
         
         # Connection status
@@ -150,25 +159,97 @@ class KartelDataManager:
             self.device_status["humidifier"]["active"] = False
             self.device_status["humidifier"]["status"] = "Non-aktif"
         
-        # Motor status (simulate turning schedule)
-        if hasattr(self, '_last_turn_time'):
-            time_since_turn = current_time - self._last_turn_time
-            if time_since_turn > 14400:  # 4 hours
-                self.device_status["motor"]["status"] = "Aktif - Membalik"
-                self._last_turn_time = current_time
-        else:
-            self._last_turn_time = current_time - 3600  # Last turn was 1 hour ago
+        # Motor status (realistic turning schedule with rotation states)
+        self._update_motor_status(current_time)
             
         return self.device_status.copy()
+    
+    def _update_motor_status(self, current_time: float):
+        """Update motor pembalik status - Simplified 3 states: Menunggu, Berputar, Berhenti"""
+        time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
+        turn_interval = self.motor_schedule["turn_interval"]
+        rotation_duration = self.motor_schedule["rotation_duration"]
+        
+        # Check if motor is currently rotating
+        if self.motor_schedule["current_rotation_start"] is not None:
+            rotation_elapsed = current_time - self.motor_schedule["current_rotation_start"]
+            
+            if rotation_elapsed < rotation_duration:
+                # Motor is currently rotating
+                self.device_status["motor"]["active"] = True
+                self.device_status["motor"]["status"] = "Berputar"
+                self.device_status["motor"]["rotation_time"] = int(rotation_duration - rotation_elapsed)
+            else:
+                # Rotation finished, set to stopped
+                self.device_status["motor"]["active"] = False
+                self.device_status["motor"]["status"] = "Berhenti"
+                self.device_status["motor"]["rotation_time"] = 0
+                self.motor_schedule["current_rotation_start"] = None
+                self.motor_schedule["last_turn_time"] = current_time
+                self.motor_schedule["is_stopped"] = True
+        else:
+            # Motor not rotating
+            if self.motor_schedule["is_stopped"]:
+                # Motor was stopped after rotation
+                self.device_status["motor"]["status"] = "Berhenti"
+                self.device_status["motor"]["active"] = False
+                
+                # Reset to Menunggu after some time (simulate cooldown)
+                if time_since_last_turn > 120:  # 2 minutes cooldown after rotation
+                    self.motor_schedule["is_stopped"] = False
+                    self.device_status["motor"]["status"] = "Menunggu"
+            else:
+                # Check if it's time to turn
+                if time_since_last_turn >= turn_interval:
+                    # Time to start rotation
+                    self.motor_schedule["current_rotation_start"] = current_time
+                    self.device_status["motor"]["active"] = True
+                    self.device_status["motor"]["status"] = "Berputar"
+                    self.device_status["motor"]["rotation_time"] = rotation_duration
+                else:
+                    # Still waiting for next turn
+                    self.device_status["motor"]["status"] = "Menunggu"
+                    self.device_status["motor"]["active"] = False
+                    self.device_status["motor"]["rotation_time"] = 0
     
     def toggle_device(self, device: str) -> bool:
         """Toggle device on/off manually"""
         if device in self.device_status:
-            current_active = self.device_status[device].get("active", False)
-            new_active = not current_active
-            self.device_status[device]["active"] = new_active
-            self.device_status[device]["status"] = "Aktif" if new_active else "Non-aktif"
-            return new_active
+            if device == "motor":
+                # Special handling for motor pembalik - 3 states: Menunggu, Berputar, Berhenti
+                current_status = self.device_status["motor"]["status"]
+                
+                if current_status == "Berputar":
+                    # Stop current rotation
+                    self.device_status["motor"]["active"] = False
+                    self.device_status["motor"]["status"] = "Berhenti"
+                    self.device_status["motor"]["rotation_time"] = 0
+                    self.motor_schedule["current_rotation_start"] = None
+                    self.motor_schedule["is_stopped"] = True
+                    return False
+                elif current_status == "Berhenti":
+                    # Start from stopped state
+                    self.motor_schedule["current_rotation_start"] = time.time()
+                    self.device_status["motor"]["active"] = True
+                    self.device_status["motor"]["status"] = "Berputar"
+                    self.device_status["motor"]["rotation_time"] = self.motor_schedule["rotation_duration"]
+                    self.motor_schedule["is_stopped"] = False
+                    return True
+                else:  # "Menunggu"
+                    # Start manual rotation from waiting state
+                    self.motor_schedule["current_rotation_start"] = time.time()
+                    self.device_status["motor"]["active"] = True
+                    self.device_status["motor"]["status"] = "Berputar"
+                    self.device_status["motor"]["rotation_time"] = self.motor_schedule["rotation_duration"]
+                    self.motor_schedule["is_stopped"] = False
+                    return True
+            else:
+                # Normal toggle for other devices
+                current_active = self.device_status[device].get("active", False)
+                new_active = not current_active
+                self.device_status[device]["active"] = new_active
+                self.device_status[device]["status"] = "Aktif" if new_active else "Non-aktif"
+                return new_active
         return False
     
     def get_connection_status(self) -> Dict[str, Any]:
