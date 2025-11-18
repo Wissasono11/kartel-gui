@@ -52,6 +52,14 @@ QPushButton#statusNotConnected {
     border-radius: 8px;
     padding: 8px 12px;
 }
+QPushButton#statusConnected {
+    background-color: #10b981; /* Green-500 - untuk status terhubung */
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
 QPushButton#statusDay {
     background-color: #eef2ff; /* Indigo-100 */
     color: #4f46e5; /* Indigo-600 */
