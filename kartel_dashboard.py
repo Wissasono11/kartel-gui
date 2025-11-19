@@ -602,7 +602,7 @@ class KartelDashboardFunctional(QWidget):
         icon_label = QLabel()
         icon_label.setPixmap(self.load_svg_icon("settings.svg", QSize(40, 40)))
         
-        title_label = QLabel("KONFIGURASI")
+        title_label = QLabel("PANEL KONFIGURASI")
         title_label.setObjectName("sectionTitle")
         
         title_layout.addWidget(icon_label)
