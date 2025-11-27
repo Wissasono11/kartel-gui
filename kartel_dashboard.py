@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-KARTEL Dashboard - Functional Version
-Interactive dashboard with dummy data and working controls
-
+KARTEL Dashboard
+Interactive dashboard
 Author: KARTEL Team
 Created: November 18, 2025
 """
@@ -18,7 +15,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy, QGridLayout, QMessageBox
 )
 from PyQt6.QtGui import QFont, QPixmap, QIcon, QFontDatabase, QColor, QPainter
-from PyQt6.QtCore import Qt, QSize, pyqtSlot
+from PyQt6.QtCore import Qt, QSize, pyqtSlot, QTimer
 
 # Import our custom modules
 from kartel_controller import KartelController
@@ -39,6 +36,12 @@ class KartelDashboardFunctional(QWidget):
         self.controller = KartelController()
         self.setup_controller_connections()
         
+        # Initialize input field references
+        self.input_fields = {
+            'temperature': None,
+            'humidity': None
+        }
+        
         # Initialize UI
         self.load_custom_fonts()
         self.init_ui()
@@ -46,6 +49,74 @@ class KartelDashboardFunctional(QWidget):
         # Store widget references for updates
         self.ui_elements = {}
         self.setup_ui_references()
+        
+        # Sync card vital targets with default profile after UI is ready
+        self.sync_initial_card_targets()
+        
+        # Force sync with current profile selection after short delay
+        QTimer.singleShot(500, self.force_sync_current_profile)
+        
+        # Start simulation timer for demo purposes (update every 30 seconds)
+        self.demo_timer = QTimer()
+        self.demo_timer.timeout.connect(self.simulate_sensor_reading)
+        self.demo_timer.start(30000)  # Update every 30 seconds
+    
+    def force_sync_current_profile(self):
+        """Force sync with currently selected profile"""
+        try:
+            if hasattr(self, 'profil_combo'):
+                current_profile_name = self.profil_combo.currentText()
+                if current_profile_name and current_profile_name != "Custom (Manual)":
+                    print(f">>> Force syncing with current profile: {current_profile_name}")
+                    self.on_profile_changed(current_profile_name)
+        except Exception as e:
+            print(f"⚠ Error in force sync: {e}")
+    
+    def simulate_sensor_reading(self):
+        """Simulate realistic sensor readings for demo purposes"""
+        import random
+        
+        # Get current target values for realistic simulation
+        target_data = self.controller.data_manager.get_target_values()
+        target_temp = target_data["temperature"]
+        target_humidity = target_data["humidity"]
+        
+        # Simulate realistic variations around target values
+        temp_variation = random.uniform(-1.5, 1.5)  # ±1.5°C variation
+        humidity_variation = random.uniform(-5.0, 5.0)  # ±5% variation
+        
+        # Calculate simulated current values
+        simulated_temp = round(target_temp + temp_variation, 1)
+        simulated_humidity = round(target_humidity + humidity_variation, 1)
+        
+        # Ensure values stay within realistic ranges
+        simulated_temp = max(30.0, min(45.0, simulated_temp))
+        simulated_humidity = max(40.0, min(80.0, simulated_humidity))
+        
+        # Update vital cards with simulated data
+        self.temp_current_label.setText(f"{simulated_temp}°C")
+        self.humidity_current_label.setText(f"{simulated_humidity}%")
+        
+        # Update graph with same data as vital cards
+        self.update_graph_with_vital_data(simulated_temp, simulated_humidity)
+        
+        print(f"🔄 Simulated reading: {simulated_temp}°C, {simulated_humidity}%")
+    
+    def sync_initial_card_targets(self):
+        """Sync card vital targets with current profile on startup"""
+        try:
+            # Get current target values after profile application
+            target_data = self.controller.data_manager.get_target_values()
+            
+            # Update card vital targets
+            if hasattr(self, 'temp_target_label') and hasattr(self, 'humidity_target_label'):
+                self.update_vital_card_targets(
+                    target_data["temperature"], 
+                    target_data["humidity"]
+                )
+                print(f"✅ Card vital targets synced: {target_data['temperature']}°C, {target_data['humidity']}%")
+        except Exception as e:
+            print(f"⚠ Failed to sync initial card targets: {e}")
     
     def setup_controller_connections(self):
         """Connect controller signals to GUI update methods"""
@@ -106,6 +177,7 @@ class KartelDashboardFunctional(QWidget):
         # Pengaturan Jendela Utama
         self.setWindowTitle("KARTEL Dashboard")
         self.setGeometry(100, 100, 1400, 900)
+        self.setMinimumSize(1000, 600)  # Set minimum size untuk responsive design
         
         # Layout Utama
         main_layout = QHBoxLayout(self)
@@ -113,6 +185,12 @@ class KartelDashboardFunctional(QWidget):
         main_layout.setSpacing(24)
 
         # === KOLOM KIRI ===
+        left_scroll_area = QScrollArea()
+        left_scroll_area.setWidgetResizable(True)
+        left_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        left_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        left_scroll_area.setObjectName("leftScrollArea")
+        
         left_column = QWidget()
         left_layout = QVBoxLayout(left_column)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -133,12 +211,15 @@ class KartelDashboardFunctional(QWidget):
         
         # Kurangi stretch di bawah agar grafik dapat space lebih
         left_layout.addStretch(0)
+        
+        # Set scroll area widget
+        left_scroll_area.setWidget(left_column)
 
         # === KOLOM KANAN (Konfigurasi) ===
         right_column = self.create_config_panel()
         
         # Tambahkan kolom ke layout utama
-        main_layout.addWidget(left_column, 7)
+        main_layout.addWidget(left_scroll_area, 7)
         main_layout.addWidget(right_column, 3)
 
         # Terapkan Stylesheet
@@ -146,7 +227,7 @@ class KartelDashboardFunctional(QWidget):
 
     def setup_ui_references(self):
         """Setup references to UI elements for dynamic updates"""
-        # Will be populated as widgets are created
+        # Input field references are now initialized in __init__
         pass
     
     # --- 1. Widget Header ---
@@ -190,7 +271,6 @@ class KartelDashboardFunctional(QWidget):
         self.status_day_btn = QPushButton(" Hari ke- 3 dari 21")
         self.status_day_btn.setIcon(QIcon(self.load_svg_icon("calendar.svg", QSize(20, 20))))
         self.status_day_btn.setObjectName("statusDay")
-        self.status_day_btn.clicked.connect(self.demo_advance_day)  # Add click handler untuk demo
         
         header_layout.addWidget(self.status_connect_btn)
         header_layout.addWidget(self.status_day_btn)
@@ -320,8 +400,8 @@ class KartelDashboardFunctional(QWidget):
         # Create status cards with references
         self.pemanas_card = self.create_single_status_card("pemanas.svg", "Pemanas", "Aktif", "statusAktif")
         self.humidifier_card = self.create_single_status_card("humidifier.svg", "Humidifier", "Non-aktif", "statusNonAktif")
-        self.motor_card = self.create_single_status_card("motor-dinamo.svg", "Motor Pembalik", "Menunggu", "statusMenunggu")
-        self.timer_card = self.create_single_status_card("sand-clock.svg", "Putaran Berikutnya", "2:30:15", "statusTimer")
+        self.motor_card = self.create_single_status_card("motor-dinamo.svg", "Motor Pembalik", "Idle", "statusMotorIdle")
+        self.timer_card = self.create_single_status_card("sand-clock.svg", "Putaran Berikutnya", "03:00:00", "statusTimer")
         
         status_cards_layout.addWidget(self.pemanas_card)
         status_cards_layout.addWidget(self.humidifier_card)
@@ -427,8 +507,8 @@ class KartelDashboardFunctional(QWidget):
     
     def setup_graph_plot(self):
         """Setup the graph plotting elements"""
-        # Setup axes ranges
-        self.plot_widget.setYRange(30, 45)  # Temperature range
+        # Setup axes ranges based on typical incubation values
+        self.plot_widget.setYRange(30, 45)  # Temperature range for incubation
         
         # Add some margin for bottom axis labels
         self.plot_widget.plotItem.setContentsMargins(10, 10, 10, 25)  # Extra bottom margin
@@ -449,10 +529,10 @@ class KartelDashboardFunctional(QWidget):
             name="Suhu"
         )
 
-        # Create second ViewBox for humidity
+        # Create second ViewBox for humidity with appropriate range
         self.view_box_2 = pg.ViewBox()
         self.plot_widget.plotItem.scene().addItem(self.view_box_2)
-        self.view_box_2.setYRange(40, 80)
+        self.view_box_2.setYRange(40, 80)  # Humidity range for incubation
 
         # Setup Y axis right (Humidity)
         ax_right = pg.AxisItem('right')
@@ -625,14 +705,43 @@ class KartelDashboardFunctional(QWidget):
         # --- Pengaturan Setpoint ---
         config_layout.addWidget(self.create_form_label("Pengaturan Setpoint"))
         config_layout.addWidget(QLabel("Target Suhu(°C)"))
-        self.suhu_input = QLineEdit("38.0")
+        
+        # Get current target values from controller
+        target_data = self.controller.data_manager.get_target_values()
+        
+        self.suhu_input = QLineEdit(str(target_data["temperature"]))
         self.suhu_input.textChanged.connect(self.validate_temperature_input)
+        self.suhu_input.textChanged.connect(self.on_manual_setpoint_change)
         config_layout.addWidget(self.suhu_input)
         
         config_layout.addWidget(QLabel("Target Kelembaban(%)"))
-        self.kelembaban_input = QLineEdit("60.0")
+        self.kelembaban_input = QLineEdit(str(target_data["humidity"]))
         self.kelembaban_input.textChanged.connect(self.validate_humidity_input)
+        self.kelembaban_input.textChanged.connect(self.on_manual_setpoint_change)
         config_layout.addWidget(self.kelembaban_input)
+        
+        # Apply default profile after input fields are created
+        if profiles:
+            default_profile = profiles[0]
+            print(f">>> Applying default profile: {default_profile['name']}")
+            
+            success = self.controller.apply_profile(default_profile["name"])
+            if success:
+                # Sync input fields with default profile
+                self.suhu_input.setText(str(default_profile["temperature"]))
+                self.kelembaban_input.setText(str(default_profile["humidity"]))
+                
+                # Force update card targets on startup
+                self.update_vital_card_targets(
+                    default_profile["temperature"], 
+                    default_profile["humidity"]
+                )
+                print(f">>> Default profile applied and synced: {default_profile['temperature']}°C, {default_profile['humidity']}%")
+                print(f"\u2705 Default profile applied and synced: {default_profile['temperature']}\u00b0C, {default_profile['humidity']}%")
+        
+        # Store references for cross-updates
+        self.input_fields['temperature'] = self.suhu_input
+        self.input_fields['humidity'] = self.kelembaban_input
         
         apply_btn = QPushButton("Terapkan Pengaturan")
         apply_btn.setObjectName("applyButton")
@@ -671,8 +780,10 @@ class KartelDashboardFunctional(QWidget):
         username_layout.addStretch()
         config_layout.addLayout(username_layout)
         
-        mqtt_settings = self.controller.get_mqtt_settings()
-        self.user_input = QLineEdit(mqtt_settings["username"])
+        # Load credentials from config (now empty by default)
+        from config import MQTT_SETTINGS
+        self.user_input = QLineEdit()  # Empty by default
+        self.user_input.setPlaceholderText("Masukkan username MQTT")
         config_layout.addWidget(self.user_input)
         
         # Password
@@ -685,7 +796,8 @@ class KartelDashboardFunctional(QWidget):
         password_layout.addStretch()
         config_layout.addLayout(password_layout)
         
-        self.pass_input = QLineEdit(mqtt_settings["password"])
+        self.pass_input = QLineEdit()  # Empty by default
+        self.pass_input.setPlaceholderText("Masukkan password MQTT")
         self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
         config_layout.addWidget(self.pass_input)
         
@@ -740,14 +852,36 @@ class KartelDashboardFunctional(QWidget):
 
     # --- Event Handlers ---
     def on_profile_changed(self, profile_name):
-        """Handle profile selection change"""
+        """Handle profile selection change with full synchronization"""
+        # Skip if user selects custom manual option
+        if profile_name == "Custom (Manual)":
+            return
+        
+        # Get the selected profile data
+        profiles = self.controller.get_incubation_profiles()
+        selected_profile = None
+        for profile in profiles:
+            if profile["name"] == profile_name:
+                selected_profile = profile
+                break
+        
+        if not selected_profile:
+            return
+            
         success = self.controller.apply_profile(profile_name)
         if success:
-            # Update input fields
-            target_data = self.controller.data_manager.get_target_values()
-            self.suhu_input.setText(str(target_data["temperature"]))
-            self.kelembaban_input.setText(str(target_data["humidity"]))
-            self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!")
+            # Update input fields to match profile values
+            self.suhu_input.setText(str(selected_profile["temperature"]))
+            self.kelembaban_input.setText(str(selected_profile["humidity"]))
+            
+            # Update card vital targets immediately with profile values
+            self.update_vital_card_targets(
+                selected_profile["temperature"], 
+                selected_profile["humidity"]
+            )
+            
+            # Use QTimer to ensure message appears on top after UI updates
+            QTimer.singleShot(100, lambda: self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!\nTarget: {selected_profile['temperature']}°C, {selected_profile['humidity']}%"))
 
     def apply_settings(self):
         """Apply temperature and humidity settings"""
@@ -755,17 +889,46 @@ class KartelDashboardFunctional(QWidget):
             temp = float(self.suhu_input.text())
             humidity = float(self.kelembaban_input.text())
             
+            # Validate ranges
+            if not (30.0 <= temp <= 45.0):
+                self.show_message("Error", "Suhu harus dalam rentang 30.0-45.0°C!")
+                return
+            
+            if not (40.0 <= humidity <= 80.0):
+                self.show_message("Error", "Kelembaban harus dalam rentang 40.0-80.0%!")
+                return
+                
             self.controller.set_target_temperature(temp)
             self.controller.set_target_humidity(humidity)
+            
+            # Update card vital targets immediately
+            self.update_vital_card_targets(temp, humidity)
             
             self.show_message("Sukses", "Pengaturan berhasil diterapkan!")
         except ValueError:
             self.show_message("Error", "Mohon masukkan nilai yang valid!")
 
     def toggle_device(self, device):
-        """Toggle device on/off"""
+        """Toggle device on/off with real-time status update"""
         result = self.controller.toggle_device(device)
-        status = "diaktifkan" if result else "dinonaktifkan"
+        
+        # Get current device status to determine actual state
+        device_status = self.controller.data_manager.get_device_status()
+        
+        # Determine actual status message based on real device state
+        if device == "pemanas":
+            is_active = device_status.get("pemanas", {}).get("active", False)
+            status = "diaktifkan" if is_active else "dinonaktifkan"
+        elif device == "humidifier":
+            is_active = device_status.get("humidifier", {}).get("active", False)
+            status = "diaktifkan" if is_active else "dinonaktifkan"
+        else:
+            # For other devices, use the toggle result
+            status = "diaktifkan" if result else "dinonaktifkan"
+        
+        # Immediately update device status display for better UX
+        self.update_device_status_display(device_status)
+        
         self.show_message("Info", f"{device.capitalize()} berhasil {status}!")
 
     def validate_temperature_input(self, text):
@@ -791,9 +954,88 @@ class KartelDashboardFunctional(QWidget):
         except ValueError:
             if text:
                 self.kelembaban_input.setStyleSheet("border: 2px solid red;")
+    
+    def on_manual_setpoint_change(self, text):
+        """Handle real-time manual setpoint changes"""
+        try:
+            # Get current values from both inputs
+            temp_text = self.suhu_input.text()
+            humidity_text = self.kelembaban_input.text()
+            
+            # Only update if both values are valid
+            if temp_text and humidity_text:
+                temp = float(temp_text)
+                humidity = float(humidity_text)
+                
+                # Validate ranges
+                if (30.0 <= temp <= 45.0) and (40.0 <= humidity <= 80.0):
+                    # Update card vital targets in real-time (preview mode)
+                    self.temp_target_label.setText(f"Target: {temp}°C")
+                    self.humidity_target_label.setText(f"Target: {humidity}%")
+                    
+                    # Check if current values match any profile
+                    self.update_profile_indicator(temp, humidity)
+                    
+        except ValueError:
+            # If invalid input, revert to last known good values
+            target_data = self.controller.data_manager.get_target_values()
+            self.temp_target_label.setText(f"Target: {target_data['temperature']}°C")
+            self.humidity_target_label.setText(f"Target: {target_data['humidity']}%")
+
+    def update_profile_indicator(self, temp, humidity):
+        """Update profile combo to show if current settings match any profile"""
+        profiles = self.controller.get_incubation_profiles()
+        
+        # Check if current values match any profile
+        matching_profile = None
+        for profile in profiles:
+            if (abs(profile["temperature"] - temp) < 0.1 and 
+                abs(profile["humidity"] - humidity) < 0.1):
+                matching_profile = profile["name"]
+                break
+        
+        # Temporarily disconnect signal to avoid recursion
+        self.profil_combo.currentTextChanged.disconnect()
+        
+        if matching_profile:
+            # Remove custom option if it exists
+            self.remove_custom_profile_option()
+            
+            # Set combo to matching profile
+            index = self.profil_combo.findText(matching_profile)
+            if index >= 0:
+                self.profil_combo.setCurrentIndex(index)
+        else:
+            # Add or select "Custom" option
+            self.add_custom_profile_option()
+        
+        # Reconnect signal
+        self.profil_combo.currentTextChanged.connect(self.on_profile_changed)
+    
+    def add_custom_profile_option(self):
+        """Add custom profile option to combo if it doesn't exist"""
+        custom_text = "Custom (Manual)"
+        custom_index = self.profil_combo.findText(custom_text)
+        
+        if custom_index == -1:
+            # Add custom option at the end
+            self.profil_combo.addItem(custom_text)
+        
+        # Select the custom option
+        custom_index = self.profil_combo.findText(custom_text)
+        if custom_index >= 0:
+            self.profil_combo.setCurrentIndex(custom_index)
+    
+    def remove_custom_profile_option(self):
+        """Remove custom profile option from combo"""
+        custom_text = "Custom (Manual)"
+        custom_index = self.profil_combo.findText(custom_text)
+        
+        if custom_index >= 0:
+            self.profil_combo.removeItem(custom_index)
 
     def attempt_mqtt_connection(self):
-        """Attempt MQTT connection"""
+        """Attempt MQTT connection with credential validation"""
         username = self.user_input.text()
         password = self.pass_input.text()
         
@@ -801,10 +1043,18 @@ class KartelDashboardFunctional(QWidget):
             self.show_message("Error", "Username dan password tidak boleh kosong!")
             return
         
+        # Validate credentials (hardcoded for security)
+        valid_username = "kartel"
+        valid_password = "kartel123"
+        
+        if username != valid_username or password != valid_password:
+            self.show_message("Error", f"Username atau password salah!\nGunakan: username='{valid_username}', password='{valid_password}'")
+            return
+        
         self.connect_btn.setText("Menghubungkan...")
         self.connect_btn.setEnabled(False)
         
-        # Simulate connection attempt
+        # Attempt connection with validated credentials
         success = self.controller.simulate_mqtt_connection(username, password)
         
         if success:
@@ -816,26 +1066,82 @@ class KartelDashboardFunctional(QWidget):
         self.connect_btn.setEnabled(True)
 
     def reset_mqtt_settings(self):
-        """Reset MQTT settings to default"""
-        mqtt_settings = self.controller.get_mqtt_settings()
-        self.user_input.setText(mqtt_settings["username"])
-        self.pass_input.setText(mqtt_settings["password"])
+        """Reset MQTT settings to empty (default state)"""
+        self.user_input.clear()
+        self.pass_input.clear()
 
-    def demo_advance_day(self):
-        """Demo function to advance incubation day"""
-        success = self.controller.data_manager.advance_incubation_day()
-        if success:
-            self.show_message("Info", f"Hari inkubasi maju ke hari {self.controller.data_manager.incubation_day}!")
-        else:
-            self.show_message("Info", "Inkubasi sudah selesai (21 hari)!")
-            # Reset to day 1 for demo
-            self.controller.data_manager.reset_incubation_day(1)
-
+    def update_vital_card_targets(self, temperature, humidity):
+        """Update target values in vital cards immediately"""
+        self.temp_target_label.setText(f"Target: {temperature}°C")
+        self.humidity_target_label.setText(f"Target: {humidity}%")
+        
+        # Update graph to reflect current displayed values from vital cards
+        current_temp = self.get_current_temp_from_card()
+        current_humidity = self.get_current_humidity_from_card()
+        self.update_graph_with_vital_data(current_temp, current_humidity)
+        
+        # Optional: Add visual feedback for updates
+        self.add_target_update_animation()
+    
+    def get_current_temp_from_card(self):
+        """Extract current temperature value from vital card"""
+        try:
+            temp_text = self.temp_current_label.text()
+            # Extract number from "37.5°C" format
+            temp_value = float(temp_text.replace('°C', ''))
+            return temp_value
+        except:
+            return 37.5  # Default fallback
+    
+    def get_current_humidity_from_card(self):
+        """Extract current humidity value from vital card"""
+        try:
+            humidity_text = self.humidity_current_label.text()
+            # Extract number from "58.0%" format
+            humidity_value = float(humidity_text.replace('%', ''))
+            return humidity_value
+        except:
+            return 60.0  # Default fallback
+    
+    def add_target_update_animation(self):
+        """Add subtle visual feedback when targets are updated"""
+        # Temporarily change the target box style to indicate update
+        original_style = self.temp_target_label.styleSheet()
+        
+        # Add brief highlight effect
+        highlight_style = """
+            QLabel {
+                background-color: rgba(79, 70, 229, 0.1);
+                border: 1px solid #4f46e5;
+                border-radius: 6px;
+                padding: 4px 8px;
+            }
+        """
+        
+        self.temp_target_label.setStyleSheet(highlight_style)
+        self.humidity_target_label.setStyleSheet(highlight_style)
+        
+        # Reset after short delay
+        QTimer.singleShot(500, lambda: (
+            self.temp_target_label.setStyleSheet(original_style),
+            self.humidity_target_label.setStyleSheet(original_style)
+        ))
+    
     def show_message(self, title, message):
-        """Show message box"""
-        msg = QMessageBox()
+        """Show message box with proper parent and focus"""
+        msg = QMessageBox(self)  # Set proper parent
         msg.setWindowTitle(title)
         msg.setText(message)
+        
+        # Ensure the message box appears on top
+        msg.setWindowFlags(msg.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        msg.raise_()  # Bring to front
+        msg.activateWindow()  # Activate window
+        
+        # Make sure parent window is active before showing dialog
+        self.raise_()
+        self.activateWindow()
+        
         msg.exec()
 
     # --- Dynamic Update Slots ---
@@ -845,13 +1151,16 @@ class KartelDashboardFunctional(QWidget):
         current = data["current"]
         target = data["target"]
         
-        # Update current values
+        # Update current values in vital cards
         self.temp_current_label.setText(f"{current['temperature']}°C")
         self.humidity_current_label.setText(f"{current['humidity']}%")
         
         # Update targets
         self.temp_target_label.setText(f"Target: {target['temperature']}°C")
         self.humidity_target_label.setText(f"Target: {target['humidity']}%")
+        
+        # Force update graph with same data as vital cards
+        self.update_graph_with_vital_data(current['temperature'], current['humidity'])
     
     @pyqtSlot(dict)
     def update_graph_data(self, data):
@@ -875,11 +1184,34 @@ class KartelDashboardFunctional(QWidget):
         
         # Update the graph plot
         self.update_graph_plot()
+    
+    def update_graph_with_vital_data(self, temperature, humidity):
+        """Update graph with same data as vital cards"""
+        import time
+        
+        current_time = time.time()
+        
+        # Add new data point with exact values from vital cards
+        self.graph_data["timestamps"].append(current_time)
+        self.graph_data["temperature"].append(temperature)
+        self.graph_data["humidity"].append(humidity)
+        
+        # Keep only last N points to prevent memory growth
+        max_points = self.graph_data["max_points"]
+        if len(self.graph_data["timestamps"]) > max_points:
+            self.graph_data["timestamps"] = self.graph_data["timestamps"][-max_points:]
+            self.graph_data["temperature"] = self.graph_data["temperature"][-max_points:]
+            self.graph_data["humidity"] = self.graph_data["humidity"][-max_points:]
+        
+        # Update the graph plot immediately
+        self.update_graph_plot()
+        
+        print(f"📊 Graph updated: {temperature}°C, {humidity}% at {time.strftime('%H:%M:%S')}")
 
     @pyqtSlot(dict)
     def update_device_status_display(self, status):
-        """Update device status display"""
-        # Update pemanas
+        """Update device status display with real-time data"""
+        # Update pemanas (heater)
         if "pemanas" in status:
             self.pemanas_status_label.setText(status["pemanas"]["status"])
             if status["pemanas"]["active"]:
@@ -887,7 +1219,7 @@ class KartelDashboardFunctional(QWidget):
             else:
                 self.pemanas_status_label.setObjectName("statusNonAktif")
         
-        # Update humidifier
+        # Update humidifier  
         if "humidifier" in status:
             self.humidifier_status_label.setText(status["humidifier"]["status"])
             if status["humidifier"]["active"]:
@@ -895,7 +1227,7 @@ class KartelDashboardFunctional(QWidget):
             else:
                 self.humidifier_status_label.setObjectName("statusNonAktif")
         
-        # Update motor
+        # Update motor with countdown display
         if "motor" in status:
             motor_status = status["motor"]["status"]
             rotation_time = status["motor"].get("rotation_time", 0)
@@ -908,17 +1240,18 @@ class KartelDashboardFunctional(QWidget):
                 
             self.motor_status_label.setText(display_text)
             
-            # Set object names for 3 motor states: Menunggu, Berputar, Berhenti
+            # Set object names for motor states
             if motor_status == "Berputar":
                 self.motor_status_label.setObjectName("statusMotorBerputar")
-            elif motor_status == "Berhenti":
-                self.motor_status_label.setObjectName("statusMotorBerhenti")
-            else:  # "Menunggu"
-                self.motor_status_label.setObjectName("statusMotorMenunggu")
+            elif motor_status == "Error":
+                self.motor_status_label.setObjectName("statusMotorError")
+            else:  # "Idle"
+                self.motor_status_label.setObjectName("statusMotorIdle")
         
-        # Update timer
+        # Update timer with real countdown (3:00:00 format)
         if "timer" in status:
-            self.timer_status_label.setText(status["timer"]["countdown"])
+            countdown = status["timer"]["countdown"]
+            self.timer_status_label.setText(countdown)
         
         # Reapply stylesheet to update colors
         self.set_stylesheet()
@@ -979,7 +1312,6 @@ class KartelDashboardFunctional(QWidget):
                 if os.path.exists(style_file):
                     with open(style_file, 'r', encoding='utf-8') as file:
                         stylesheet = file.read()
-                    print(f"✅ Stylesheet berhasil dimuat dari: {style_file}")
                     return stylesheet
             
             raise FileNotFoundError("Stylesheet tidak ditemukan")
@@ -987,44 +1319,6 @@ class KartelDashboardFunctional(QWidget):
         except Exception as e:
             print(f"⚠ Error saat memuat stylesheet: {e}")
             return ""
-
-    def get_default_stylesheet(self):
-        """Fallback stylesheet"""
-        return """
-        QWidget {
-            font-family: 'Manrope', 'Arial', sans-serif;
-            font-size: 14px;
-            color: #374151;
-        }
-        
-        KartelDashboardFunctional {
-            background-color: #f8f9fa;
-        }
-        
-        #statusConnected {
-            background-color: #22c55e;
-            color: white;
-        }
-        
-        #statusNotConnected {
-            background-color: #ef4444;
-            color: white;
-        }
-        
-        #statusAktif {
-            background-color: #22c55e;
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-        }
-        
-        #statusNonAktif {
-            background-color: #6b7280;
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-        }
-        """
 
 if __name__ == "__main__":
     pg.setConfigOptions(antialias=True)

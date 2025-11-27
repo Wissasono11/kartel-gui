@@ -135,7 +135,7 @@ QLabel#statusCardTitle {
 
 /* Badge Status */
 QLabel#statusAktif, QLabel#statusNonAktif, QLabel#statusMenunggu, QLabel#statusTimer, 
-QLabel#statusMotorBerputar, QLabel#statusMotorBerhenti, QLabel#statusMotorMenunggu {
+QLabel#statusMotorBerputar, QLabel#statusMotorError, QLabel#statusMotorIdle {
     font-weight: 700;
     font-size: 14px;
     border-radius: 6px;
@@ -153,17 +153,17 @@ QLabel#statusMenunggu {
     background-color: #fffbeb; /* Yellow-100 */
     color: #92400e; /* Yellow-800 */
 }
-/* Motor Status - 3 states only */
+/* Motor Status - 3 states: Berputar (Green), Error (Red), Idle (Yellow) */
 QLabel#statusMotorBerputar {
-    background-color: #d1fae5; /* Green-100 - sama seperti statusAktif */
+    background-color: #d1fae5; /* Green-100 - Active/Rotating */
     color: #065f46; /* Green-800 */
 }
-QLabel#statusMotorBerhenti {
-    background-color: #fee2e2; /* Red-100 - sama seperti statusNonAktif */
+QLabel#statusMotorError {
+    background-color: #fee2e2; /* Red-100 - Error state */
     color: #991b1b; /* Red-800 */
 }
-QLabel#statusMotorMenunggu {
-    background-color: #fffbeb; /* Yellow-100 */
+QLabel#statusMotorIdle {
+    background-color: #fffbeb; /* Yellow-100 - Idle/Ready state */
     color: #92400e; /* Yellow-800 */
 }
 QLabel#statusTimer {
@@ -339,4 +339,39 @@ QFrame#infoBox {
 /* Divider */
 QFrame#divider {
     border-color: #e5e7eb;
+}
+
+/* --- Scroll Area untuk Kolom Kiri --- */
+QScrollArea#leftScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+QScrollArea#leftScrollArea QScrollBar:vertical {
+    background-color: #f3f4f6;
+    width: 8px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+QScrollArea#leftScrollArea QScrollBar::handle:vertical {
+    background-color: #d1d5db;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollArea#leftScrollArea QScrollBar::handle:vertical:hover {
+    background-color: #9ca3af;
+}
+
+QScrollArea#leftScrollArea QScrollBar::add-line:vertical,
+QScrollArea#leftScrollArea QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollArea#leftScrollArea QScrollBar::add-page:vertical,
+QScrollArea#leftScrollArea QScrollBar::sub-page:vertical {
+    background: none;
 }
