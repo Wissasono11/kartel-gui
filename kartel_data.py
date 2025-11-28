@@ -50,6 +50,18 @@ class KartelRealDataManager(QObject):
         self.connection_attempts = 0
         self.last_data_time = 0
         
+        # Initialize motor schedule with default idle state
+        import time
+        current_time = time.time()
+        self.motor_schedule = {
+            "last_turn_time": current_time - 10800,  # 3 hours ago (so ready to turn when connected)
+            "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
+            "rotation_duration": 10,  # 10 seconds
+            "current_rotation_start": None,
+            "status": "Idle",  # Default idle state when not connected
+            "waiting_for_connection": True  # Flag to indicate we're waiting for MQTT connection
+        }
+        
         # Historical data storage
         self.historical_data = {
             "timestamps": [],
@@ -110,6 +122,11 @@ class KartelRealDataManager(QObject):
             
             if result == mqtt.MQTT_ERR_SUCCESS:
                 print(f"✅ MQTT connected to Teknohole, subscribed to: {topic}")
+                
+                # Start motor rotation when MQTT connects for the first time
+                if self.motor_schedule["waiting_for_connection"]:
+                    self._start_motor_on_connection()
+                    
             else:
                 print(f"⚠ Subscription failed: {result}")
         else:
@@ -136,6 +153,10 @@ class KartelRealDataManager(QObject):
         """MQTT disconnect callback"""
         self.is_connected = False
         self.connection_changed.emit(False)
+        
+        # Reset motor to idle state when disconnected
+        self._reset_motor_to_idle()
+        
         if rc != 0:
             print(f"⚠ MQTT unexpected disconnect: {rc}")
             # Auto-reconnect will be handled by check_connection
@@ -411,35 +432,42 @@ class KartelRealDataManager(QObject):
         current_time = time.time()
         
         # Initialize motor schedule if not exists
-        # Initialize motor schedule if not exists
         if not hasattr(self, 'motor_schedule'):
             self.motor_schedule = {
                 "last_turn_time": current_time - 10800,  # 3 hours ago
                 "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
                 "rotation_duration": 10,  # 10 seconds
                 "current_rotation_start": None,
-                "status": "Idle"
+                "status": "Idle",
+                "waiting_for_connection": True
             }
-        # Update motor status based on schedule
-        self._update_motor_status(current_time)
         
-        # Calculate next rotation countdown
-        time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
-        
-        if self.motor_schedule["status"] == "Berputar":
-            if self.motor_schedule["current_rotation_start"] is not None:
-                rotation_elapsed = current_time - self.motor_schedule["current_rotation_start"]
-                remaining_time = max(0, int(self.motor_schedule["rotation_duration"] - rotation_elapsed))
-                countdown_text = f"{remaining_time}s"
-            else:
-                countdown_text = "Berputar"
+        # Check connection status and update motor accordingly
+        if not self.is_connected:
+            # When not connected, motor stays idle and countdown shows default 3:00:00
+            self.motor_schedule["status"] = "Idle"
+            self.motor_schedule["current_rotation_start"] = None
+            countdown_text = "03:00:00"
         else:
-            # Calculate time until next rotation
-            remaining_time = max(0, int(self.motor_schedule["turn_interval"] - time_since_last_turn))
-            hours = remaining_time // 3600
-            minutes = (remaining_time % 3600) // 60
-            seconds = remaining_time % 60
-            countdown_text = f"{hours}:{minutes:02d}:{seconds:02d}"
+            # Update motor status based on schedule when connected
+            self._update_motor_status(current_time)
+            
+            # Calculate countdown based on motor status
+            if self.motor_schedule["status"] == "Berputar":
+                if self.motor_schedule["current_rotation_start"] is not None:
+                    rotation_elapsed = current_time - self.motor_schedule["current_rotation_start"]
+                    remaining_time = max(0, int(self.motor_schedule["rotation_duration"] - rotation_elapsed))
+                    countdown_text = f"{remaining_time}s"
+                else:
+                    countdown_text = "Berputar"
+            else:
+                # Calculate time until next rotation
+                time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
+                remaining_time = max(0, int(self.motor_schedule["turn_interval"] - time_since_last_turn))
+                hours = remaining_time // 3600
+                minutes = (remaining_time % 3600) // 60
+                seconds = remaining_time % 60
+                countdown_text = f"{hours}:{minutes:02d}:{seconds:02d}"
         
         return {
             "pemanas": {
@@ -465,7 +493,13 @@ class KartelRealDataManager(QObject):
         }
     
     def _update_motor_status(self, current_time: float):
-        """Update motor status based on 3-hour schedule"""
+        """Update motor status based on 3-hour schedule (only when connected)"""
+        # Only update motor status if connected to MQTT
+        if not self.is_connected:
+            self.motor_schedule["status"] = "Idle"
+            self.motor_schedule["current_rotation_start"] = None
+            return
+            
         time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
         turn_interval = self.motor_schedule["turn_interval"]
         rotation_duration = self.motor_schedule["rotation_duration"]
@@ -482,6 +516,7 @@ class KartelRealDataManager(QObject):
                 self.motor_schedule["status"] = "Idle"
                 self.motor_schedule["current_rotation_start"] = None
                 self.motor_schedule["last_turn_time"] = current_time
+                print(f"✅ Motor rotation completed (10s)")
         else:
             # Motor not rotating - check if it's time to start
             if time_since_last_turn >= turn_interval:
@@ -505,10 +540,11 @@ class KartelRealDataManager(QObject):
                 "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
                 "rotation_duration": 10,  # 10 seconds
                 "current_rotation_start": None,
-                "status": "Idle"
+                "status": "Idle",
+                "waiting_for_connection": True
             }
         
-        # Update motor status
+        # Update motor status (only when connected)
         self._update_motor_status(current_time)
         
         # Emit device status update for real-time GUI refresh
@@ -638,10 +674,32 @@ class KartelRealDataManager(QObject):
         if hasattr(self, 'motor_timer'):
             self.motor_timer.stop()
             print("⏹️ Motor real-time timer stopped")
-            
-        if hasattr(self, 'motor_timer'):
-            self.motor_timer.stop()
-            print("⏹️ Motor real-time timer stopped")
+    
+    def _start_motor_on_connection(self):
+        """Start motor rotation when MQTT first connects"""
+        import time
+        current_time = time.time()
+        
+        # Clear waiting flag
+        self.motor_schedule["waiting_for_connection"] = False
+        
+        # Start immediate rotation upon connection
+        self.motor_schedule["current_rotation_start"] = current_time
+        self.motor_schedule["status"] = "Berputar"
+        self.motor_schedule["last_turn_time"] = current_time
+        
+        print(f"🔄 Motor rotation started immediately upon MQTT connection (10s)")
+        
+        # Send motor command to ESP32 if needed
+        command = {"MOTOR": "ROTATE"}
+        self.send_command(command)
+    
+    def _reset_motor_to_idle(self):
+        """Reset motor to idle state when MQTT disconnects"""
+        self.motor_schedule["status"] = "Idle"
+        self.motor_schedule["current_rotation_start"] = None
+        self.motor_schedule["waiting_for_connection"] = True
+        print(f"⏸️ Motor reset to idle state (disconnected from MQTT)")
 
 # Global instance
 real_data_manager = None

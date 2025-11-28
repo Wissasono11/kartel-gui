@@ -15,8 +15,8 @@ CONNECTION_TYPE = 'MQTT'
 MQTT_SETTINGS = {
     "broker": "mqtt.teknohole.com",
     "port": 1884,
-    "username": "kartel",
-    "password": "kartel123",
+    "username": "kartel",  
+    "password": "kartel123",  
     "topics": {
         "sensor_data": "topic/penetasan/message",    # Data yang diterima dari ESP32
         "command": "topic/penetasan/command"         # Command yang dikirim ke ESP32
