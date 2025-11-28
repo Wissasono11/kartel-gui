@@ -1,35 +1,25 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-KARTEL Configuration
-Real data connection settings for Teknohole MQTT
-
-Author: KARTEL Team
-Created: November 27, 2025
-"""
-
-# Connection Type: 'MQTT', 'SERIAL', or 'DUMMY'
+# Connection Type: 'MQTT' untuk koneksi real-time ke sensor
 CONNECTION_TYPE = 'MQTT'
 
-# MQTT Settings for Teknohole
+# MQTT Settings untuk menerima data real dari sensor ESP32 via Teknohole
 MQTT_SETTINGS = {
     "broker": "mqtt.teknohole.com",
     "port": 1884,
     "username": "kartel",  
     "password": "kartel123",  
     "topics": {
-        "sensor_data": "topic/penetasan/message",    # Data yang diterima dari ESP32
+        "sensor_data": "topic/penetasan/status",     # Data yang diterima dari ESP32
         "command": "topic/penetasan/command"         # Command yang dikirim ke ESP32
     },
     "keepalive": 60,
     "qos": 1
 }
 
-# Data format settings
+# Format data sensor real-time
 DATA_FORMAT = {
     "sensor_keys": ["temperature", "humidity", "power", "rotate_on", "SET"],
-    "update_interval": 3000,  # ms
-    "history_max_points": 100
+    "update_interval": 3000,  # ms - interval update dari sensor
+    "history_max_points": 100  # maksimal data point untuk grafik
 }
 
 # Default device settings

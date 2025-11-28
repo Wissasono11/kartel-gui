@@ -61,8 +61,8 @@ class KartelController(QObject):
         self.status_updated.emit(device_status)
     
     def on_real_data_received(self, data):
-        """Handle real data received from ESP32 via MQTT"""
-        # Convert to expected format for GUI
+        """Handle real data received dari ESP32 via MQTT"""
+        # Convert ke format yang diharapkan GUI
         data_packet = {
             "current": {
                 "temperature": data.get("temperature", 0.0),
@@ -78,11 +78,14 @@ class KartelController(QObject):
             }
         }
         
+        # Emit signal untuk update dashboard
         self.data_updated.emit(data_packet)
         
-        # Also update device status when new data arrives
+        # Update device status ketika data baru datang
         device_status = self.data_manager.get_device_status()
         self.status_updated.emit(device_status)
+        
+        print(f"📊 Data real diterima dan diproses: T={data.get('temperature', 0):.1f}°C, H={data.get('humidity', 0):.1f}%")
     
     def on_connection_changed(self, connected):
         """Handle MQTT connection status change"""

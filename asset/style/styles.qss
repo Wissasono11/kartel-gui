@@ -297,6 +297,19 @@ QPushButton#cancelButton:hover {
     background-color: #f9fafb;
 }
 
+QPushButton#disconnectButton {
+    background-color: #ef4444; /* Red-500 */
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+QPushButton#disconnectButton:hover {
+    background-color: #dc2626; /* Red-600 */
+}
+QPushButton#disconnectButton:pressed {
+    background-color: #b91c1c; /* Red-700 */
+}
+
 QPushButton#connectButton {
     background-color: #10b981; /* Green-500 */
     color: white;

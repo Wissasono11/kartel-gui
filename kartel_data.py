@@ -1,11 +1,3 @@
-"""
-KARTEL Real Data Manager
-Handles real sensor data from ESP32 via MQTT Teknohole
-
-Author: KARTEL Team
-Created: November 27, 2025
-"""
-
 import json
 import time
 import threading
@@ -34,10 +26,10 @@ class KartelRealDataManager(QObject):
     def __init__(self):
         super().__init__()
         
-        # Current sensor values from ESP32
+        # Current sensor values dari ESP32 (awalnya kosong, menunggu data real)
         self.current_data = {
-            "temperature": 0.0,
-            "humidity": 0.0,
+            "temperature": 0.0,  # Akan diisi dari data MQTT real
+            "humidity": 0.0,     # Akan diisi dari data MQTT real
             "power": 0,
             "rotate_on": 0,
             "SET": DEFAULT_SETTINGS["target_temperature"],
@@ -81,10 +73,12 @@ class KartelRealDataManager(QObject):
         self.motor_timer.timeout.connect(self.update_motor_realtime)
         self.motor_timer.start(1000)  # Update every second for real-time countdown
         
-        # Initialize MQTT client but don't setup or connect until credentials provided
+        # Initialize MQTT client and connect automatically
         if MQTT_AVAILABLE:
-            self.mqtt_client = None
-            print("✅ MQTT library available, waiting for user credentials...")
+            self.setup_mqtt_connection()
+            # Auto connect dengan kredensial yang ada
+            self.connect()
+            print("✅ MQTT client initialized and attempting connection...")
         else:
             self.error_occurred.emit("MQTT library tidak tersedia")
     
@@ -122,6 +116,9 @@ class KartelRealDataManager(QObject):
             
             if result == mqtt.MQTT_ERR_SUCCESS:
                 print(f"✅ MQTT connected to Teknohole, subscribed to: {topic}")
+                print(f"🔊 Listening for sensor data on topic: topic/penetasan/status")
+                print(f"🅰️ Waiting for ESP32 to send data on topic: topic/penetasan/status")
+                print(f"🅰️ Expected format: {{'temperature': X, 'humidity': Y, 'power': Z, 'rotate_on': A, 'SET': B}}")
                 
                 # Start motor rotation when MQTT connects for the first time
                 if self.motor_schedule["waiting_for_connection"]:
@@ -167,21 +164,23 @@ class KartelRealDataManager(QObject):
         """MQTT message received callback"""
         try:
             # Decode message
+            topic = msg.topic
             payload = msg.payload.decode('utf-8')
-            print(f"📩 Received: {payload}")
+            print(f"📩 Message received from topic '{topic}': {payload}")
             
             # Parse JSON data
             data = json.loads(payload)
+            print(f"📊 Parsed sensor data: {data}")
             
             # Process received data
             self.process_sensor_data(data)
             
         except json.JSONDecodeError as e:
-            error_msg = f"Invalid JSON received: {payload}"
+            error_msg = f"Invalid JSON received from topic '{msg.topic}': {payload}"
             print(f"⚠ {error_msg}")
             self.error_occurred.emit(error_msg)
         except Exception as e:
-            error_msg = f"Error processing MQTT message: {str(e)}"
+            error_msg = f"Error processing MQTT message from '{msg.topic}': {str(e)}"
             print(f"⚠ {error_msg}")
             self.error_occurred.emit(error_msg)
     
@@ -226,14 +225,15 @@ class KartelRealDataManager(QObject):
                     power_status = "ON" if self.current_data["power"] > 0 else "OFF"
                     print(f"🔥 Heater power: {self.current_data['power']}% ({power_status})")
                 
-                # Emit signal for GUI update
+                # Emit signal untuk update GUI real-time
                 self.data_received.emit(self.current_data.copy())
                 
-                print(f"📊 Data updated: T={self.current_data['temperature']:.1f}°C, "
-                      f"H={self.current_data['humidity']:.1f}%, "
-                      f"Power={self.current_data['power']}%, "
-                      f"Rotate={self.current_data['rotate_on']}s, "
-                      f"Target={self.current_data['SET']:.1f}°C")
+                print(f"📡 Data REAL dari ESP32 diterima dan diteruskan ke GUI:")
+                print(f"    🌡️ Suhu: {self.current_data['temperature']:.1f}°C")
+                print(f"    💧 Kelembaban: {self.current_data['humidity']:.1f}%") 
+                print(f"    ⚡ Power: {self.current_data['power']}%")
+                print(f"    🔄 Rotate: {self.current_data['rotate_on']}s")
+                print(f"    🎯 Target: {self.current_data['SET']:.1f}°C")
         
         except Exception as e:
             error_msg = f"Error processing sensor data: {str(e)}"
@@ -308,8 +308,8 @@ class KartelRealDataManager(QObject):
     
     def set_target_temperature(self, temperature: float) -> bool:
         """Send target temperature to ESP32"""
-        if not (30.0 <= temperature <= 45.0):
-            error_msg = f"Invalid temperature: {temperature}. Must be 30-45°C"
+        if not (20.0 <= temperature <= 50.0):
+            error_msg = f"Invalid temperature: {temperature}. Must be 20-50°C"
             print(f"⚠ {error_msg}")
             self.error_occurred.emit(error_msg)
             return False
@@ -423,7 +423,7 @@ class KartelRealDataManager(QObject):
         if temperature is not None:
             self.set_target_temperature(temperature)
         if humidity is not None:
-            self.device_settings["target_humidity"] = max(40.0, min(80.0, humidity))
+            self.device_settings["target_humidity"] = max(60.0, min(80.0, humidity))
     
     def get_device_status(self) -> Dict[str, Any]:
         """Get device status based on real sensor data and MQTT commands"""
@@ -624,10 +624,12 @@ class KartelRealDataManager(QObject):
         try:
             # Check if credentials are provided
             if not MQTT_SETTINGS["username"] or not MQTT_SETTINGS["password"]:
-                self.error_occurred.emit("Username dan password MQTT diperlukan")
+                error_msg = "Username dan password MQTT diperlukan"
+                print(f"❌ {error_msg}")
+                self.error_occurred.emit(error_msg)
                 return False
             
-            # Setup MQTT client first
+            # Setup MQTT client first if not exists
             if self.mqtt_client is None:
                 self.setup_mqtt_connection()
             
@@ -638,7 +640,10 @@ class KartelRealDataManager(QObject):
             )
             
             # Connect to Teknohole broker
-            print(f"🔄 Connecting to {MQTT_SETTINGS['broker']}:{MQTT_SETTINGS['port']}")
+            print(f"🔄 Connecting to {MQTT_SETTINGS['broker']}:{MQTT_SETTINGS['port']} with credentials...")
+            print(f"📡 Username: {MQTT_SETTINGS['username']}")
+            print(f"📡 Topic untuk data sensor: topic/penetasan/status")
+            
             self.mqtt_client.connect_async(
                 MQTT_SETTINGS["broker"], 
                 MQTT_SETTINGS["port"], 
@@ -700,6 +705,13 @@ class KartelRealDataManager(QObject):
         self.motor_schedule["current_rotation_start"] = None
         self.motor_schedule["waiting_for_connection"] = True
         print(f"⏸️ Motor reset to idle state (disconnected from MQTT)")
+    
+    def log_real_data_status(self):
+        """Log status penerimaan data real untuk debugging"""
+        if self.current_data["temperature"] != 0.0 or self.current_data["humidity"] != 0.0:
+            print(f"📊 Data REAL tersimpan: T={self.current_data['temperature']:.1f}°C, H={self.current_data['humidity']:.1f}%")
+        else:
+            print(f"⏳ Belum ada data REAL dari ESP32 - Listening pada topic: topic/penetasan/status")
 
 # Global instance
 real_data_manager = None
