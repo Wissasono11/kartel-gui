@@ -1,8 +1,12 @@
-# 🥚 KARTEL - Kendali Automasi Ruangan Telur
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg)](https://pypi.org/project/PyQt6/)
-[![MQTT](https://img.shields.io/badge/MQTT-Teknohole-orange.svg)](https://mqtt.teknohole.com)
+<div align="center">
+  <img src="asset/img/kartel-logo.png" alt="KARTEL Logo" width="120" height="120">
+  
+  # 🥚 KARTEL - Kendali Automasi Ruangan Telur
+  
+  [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+  [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg)](https://pypi.org/project/PyQt6/)
+  [![MQTT](https://img.shields.io/badge/MQTT-Teknohole-orange.svg)](https://mqtt.teknohole.com)
+</div>
 
 Dashboard monitoring dan kontrol inkubator telur dengan koneksi real-time MQTT ke ESP32.
 
