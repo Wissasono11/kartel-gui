@@ -59,7 +59,7 @@ class KartelDashboard(QWidget):
         self.data_refresh_timer.timeout.connect(self.refresh_display_data)
         self.data_refresh_timer.start(2000)  # Refresh display setiap 2 detik
         
-        print("📡 Dashboard siap menerima data REAL dari topic/penetasan/status")
+        print("📡 KARTEL Dashboard siap - Silakan connect manual untuk menerima data sensor")
     
     def setup_controller_connections(self):
         """Connect controller signals to GUI update methods"""
@@ -87,12 +87,8 @@ class KartelDashboard(QWidget):
             if os.path.exists(font_path):
                 font_id = QFontDatabase.addApplicationFont(font_path)
                 if font_id != -1:
-                    print(f"✅ Font Manrope berhasil dimuat dari: {font_path}")
                     font_loaded = True
                     break
-        
-        if not font_loaded:
-            print("⚠ Font Manrope tidak ditemukan, menggunakan fallback")
         
         return font_loaded
     
@@ -162,7 +158,7 @@ class KartelDashboard(QWidget):
             if hasattr(self, 'profil_combo'):
                 current_profile_name = self.profil_combo.currentText()
                 if current_profile_name and current_profile_name != "Custom (Manual)":
-                    print(f">>> Force syncing with current profile: {current_profile_name}")
+                    # Force sync quietly
                     self.event_handlers.on_profile_changed(current_profile_name)
         except Exception as e:
             print(f"⚠ Error in force sync: {e}")
@@ -188,13 +184,7 @@ class KartelDashboard(QWidget):
             # Jika graph kosong, tambahkan data point pertama
             self.update_graph_with_real_data(current_readings['temperature'], current_readings['humidity'])
         
-        print(f"📊 Display updated from real data: T={current_readings['temperature']:.1f}°C, H={current_readings['humidity']:.1f}%")
-        print(f"🎯 Connection status: {self.controller.data_manager.is_connected}")
-        
-        # Force koneksi MQTT jika belum terhubung
-        if not self.controller.data_manager.is_connected:
-            print("🔄 Attempting MQTT connection to topic/penetasan/status...")
-            self.controller.data_manager.connect()
+        # Tidak auto connect - user harus manual connect
     
     def refresh_display_data(self):
         """Refresh display data dari MQTT real-time - TANPA simulasi"""
@@ -209,26 +199,23 @@ class KartelDashboard(QWidget):
             self.temp_current_label.setText(f"{current_readings['temperature']:.1f}°C")
             self.humidity_current_label.setText(f"{current_readings['humidity']:.1f}%")
             
-            # Log data yang diterima untuk debugging
+            # Log hanya saat ada data real dari ESP32
             if current_readings['temperature'] != 0.0 or current_readings['humidity'] != 0.0:
-                print(f"📊 Data REAL dari ESP32: T={current_readings['temperature']:.1f}°C, H={current_readings['humidity']:.1f}%")
                 # Update graph dengan data real
                 self.update_graph_with_real_data(current_readings['temperature'], current_readings['humidity'])
-            else:
-                print("⏳ Menunggu data REAL dari ESP32 pada topic: topic/penetasan/status")
-                print(f"🔄 Display refreshed: T={current_readings['temperature']:.1f}°C, H={current_readings['humidity']:.1f}%")
+            # Skip logging untuk data kosong agar tidak spam terminal
     
     def check_mqtt_connection_status(self):
-        """Check dan log status koneksi MQTT untuk debugging"""
+        """Check status koneksi MQTT (minimal logging)"""
         if hasattr(self.controller.data_manager, 'is_connected'):
-            if self.controller.data_manager.is_connected:
-                print(f"✅ MQTT terhubung - Listening pada topic: topic/penetasan/status")
-            else:
+            if not self.controller.data_manager.is_connected:
                 # Mencegah auto reconnect jika user memutus koneksi secara manual
                 if hasattr(self.controller.data_manager, 'user_disconnected') and self.controller.data_manager.user_disconnected:
-                    print(f"🚫 MQTT terputus oleh user - Tidak auto reconnect")
+                    pass  # Skip logging untuk user disconnect
+                # Mencegah auto connect jika user belum pernah connect manual
+                elif hasattr(self.controller.data_manager, 'manual_connect_required') and self.controller.data_manager.manual_connect_required:
+                    pass  # Skip logging untuk waiting manual connect
                 else:
-                    print(f"❌ MQTT tidak terhubung - Mencoba koneksi ulang...")
                     self.controller.data_manager.connect()
     
     def sync_initial_card_targets(self):
@@ -243,7 +230,7 @@ class KartelDashboard(QWidget):
                     target_data["temperature"], 
                     target_data["humidity"]
                 )
-                print(f"✅ Card vital targets synced: {target_data['temperature']}°C, {target_data['humidity']}%")
+                # Targets synced quietly
         except Exception as e:
             print(f"⚠ Failed to sync initial card targets: {e}")
     
@@ -304,7 +291,7 @@ class KartelDashboard(QWidget):
         # Update plot graph segera
         self.graph_components.update_graph_plot()
         
-        print(f"📊 Graph updated dengan data real: {temperature:.1f}°C, {humidity:.1f}% pada {time.strftime('%H:%M:%S')}")
+        # Graph updated quietly
     
     # === DYNAMIC UPDATE SLOTS ===
     
@@ -325,7 +312,7 @@ class KartelDashboard(QWidget):
         # Update graph dengan data real dari sensor
         self.update_graph_with_real_data(current['temperature'], current['humidity'])
         
-        print(f"📡 Sensor data received - T: {current['temperature']:.1f}°C, H: {current['humidity']:.1f}%")
+        # Sensor data processed quietly
     
     @pyqtSlot(dict)
     def update_graph_data(self, data):
@@ -348,7 +335,7 @@ class KartelDashboard(QWidget):
         # Update plot graph dengan data real
         self.graph_components.update_graph_plot()
         
-        print(f"📊 Graph diperbarui dengan data sensor real: T={current['temperature']:.1f}°C, H={current['humidity']:.1f}%")
+        # Graph updated with real sensor data
 
     @pyqtSlot(dict)
     def update_device_status_display(self, status):

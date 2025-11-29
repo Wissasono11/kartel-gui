@@ -97,8 +97,7 @@ class DashboardConfigPanel:
         profiles = self.parent.controller.get_incubation_profiles()
         if profiles:
             default_profile = profiles[0]
-            print(f">>> Applying default profile: {default_profile['name']}")
-            
+            # Apply default profile quietly
             success = self.parent.controller.apply_profile(default_profile["name"])
             if success:
                 # Sync input fields with default profile
@@ -110,7 +109,6 @@ class DashboardConfigPanel:
                     default_profile["temperature"], 
                     default_profile["humidity"]
                 )
-                print(f">>> Default profile applied and synced: {default_profile['temperature']}°C, {default_profile['humidity']}%")
         
         # Store references for cross-updates
         self.parent.input_fields['temperature'] = self.parent.suhu_input

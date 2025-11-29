@@ -227,11 +227,9 @@ class DashboardEventHandlers:
         # Putuskan koneksi MQTT
         if hasattr(self.parent.controller, 'data_manager'):
             if self.parent.controller.data_manager.is_connected:
-                print("🔌 Memutuskan koneksi MQTT dengan broker...")
                 self.parent.controller.data_manager.disconnect()
-                print("✅ Koneksi MQTT berhasil diputus - Auto reconnect dinonaktifkan")
+                print("✅ MQTT disconnected - Auto reconnect disabled")
             else:
-                print("ℹ️ MQTT sudah tidak terhubung")
                 # Set flag untuk mencegah auto reconnect
                 self.parent.controller.data_manager.user_disconnected = True
         

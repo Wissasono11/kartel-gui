@@ -42,6 +42,7 @@ class KartelRealDataManager(QObject):
         self.connection_attempts = 0
         self.last_data_time = 0
         self.user_disconnected = False  # Flag untuk mencegah auto reconnect setelah user disconnect
+        self.manual_connect_required = True  # Flag untuk mencegah auto connect sampai user manual connect pertama kali
         
         # inisiasi status motor pembalik telur
         import time
@@ -74,12 +75,9 @@ class KartelRealDataManager(QObject):
         self.motor_timer.timeout.connect(self.update_motor_realtime)
         self.motor_timer.start(1000)  # Update every second for real-time countdown
         
-        # Initialize MQTT client and connect automatically
+        # Initialize MQTT client (TANPA auto connect - user harus manual connect)
         if MQTT_AVAILABLE:
             self.setup_mqtt_connection()
-            # Auto connect dengan kredensial yang ada
-            self.connect()
-            print("✅ MQTT client initialized and attempting connection...")
         else:
             self.error_occurred.emit("MQTT library tidak tersedia")
     
@@ -94,8 +92,6 @@ class KartelRealDataManager(QObject):
             self.mqtt_client.on_disconnect = self.on_mqtt_disconnect
             self.mqtt_client.on_message = self.on_mqtt_message
             self.mqtt_client.on_connect_fail = self.on_connect_fail
-            
-            print("🔧 MQTT client configured, ready for connection")
             
         except Exception as e:
             error_msg = f"MQTT setup error: {str(e)}"
@@ -116,14 +112,12 @@ class KartelRealDataManager(QObject):
             result, mid = client.subscribe(topic, MQTT_SETTINGS["qos"])
             
             if result == mqtt.MQTT_ERR_SUCCESS:
-                print(f"✅ MQTT connected to Teknohole, subscribed to: {topic}")
-                print(f"🔊 Listening for sensor data on topic: topic/penetasan/status")
-                print(f"🅰️ Waiting for ESP32 to send data on topic: topic/penetasan/status")
-                print(f"🅰️ Expected format: {{'temperature': X, 'humidity': Y, 'power': Z, 'rotate_on': A, 'SET': B}}")
+                print(f"✅ MQTT Connected - Listening for sensor data on: {topic}")
                 
                 # Start motor rotation when MQTT connects for the first time
                 if self.motor_schedule["waiting_for_connection"]:
                     self._start_motor_on_connection()
+                    print(f"🔄 Motor rotation started (connected)")
                     
             else:
                 print(f"⚠ Subscription failed: {result}")
@@ -167,11 +161,9 @@ class KartelRealDataManager(QObject):
             # Decode message
             topic = msg.topic
             payload = msg.payload.decode('utf-8')
-            print(f"📩 Message received from topic '{topic}': {payload}")
             
             # Parse JSON data
             data = json.loads(payload)
-            print(f"📊 Parsed sensor data: {data}")
             
             # Process received data
             self.process_sensor_data(data)
@@ -219,22 +211,21 @@ class KartelRealDataManager(QObject):
                         self.current_data["temperature"],
                         self.current_data["humidity"]
                     )
+                    # Log temperature and humidity changes
+                    print(f"🌡️ Temperature: {self.current_data['temperature']:.1f}°C")
+                    print(f"💧 Humidity: {self.current_data['humidity']:.1f}%")
                 
                 # Log power changes for heater status tracking
                 power_changed = abs(self.current_data.get("power", 0) - old_power) > 5
                 if power_changed:
                     power_status = "ON" if self.current_data["power"] > 0 else "OFF"
-                    print(f"🔥 Heater power: {self.current_data['power']}% ({power_status})")
+                    print(f"🔥 Heater Power: {self.current_data['power']}% ({power_status})")
                 
                 # Emit signal untuk update GUI real-time
                 self.data_received.emit(self.current_data.copy())
                 
-                print(f"📡 Data REAL dari ESP32 diterima dan diteruskan ke GUI:")
-                print(f"    🌡️ Suhu: {self.current_data['temperature']:.1f}°C")
-                print(f"    💧 Kelembaban: {self.current_data['humidity']:.1f}%") 
-                print(f"    ⚡ Power: {self.current_data['power']}%")
-                print(f"    🔄 Rotate: {self.current_data['rotate_on']}s")
-                print(f"    🎯 Target: {self.current_data['SET']:.1f}°C")
+                # Log data penting dari ESP32
+                print(f"📡 ESP32 Data: T={self.current_data['temperature']:.1f}°C, H={self.current_data['humidity']:.1f}%, Power={self.current_data['power']}%")
         
         except Exception as e:
             error_msg = f"Error processing sensor data: {str(e)}"
@@ -268,7 +259,6 @@ class KartelRealDataManager(QObject):
             
             self.connection_attempts += 1
             if self.connection_attempts <= CONNECTION_RETRY["max_attempts"]:
-                print(f"🔄 Reconnection attempt {self.connection_attempts}/{CONNECTION_RETRY['max_attempts']}")
                 try:
                     self.mqtt_client.reconnect()
                 except:
@@ -323,6 +313,7 @@ class KartelRealDataManager(QObject):
         success = self.send_command(command)
         if success:
             self.device_settings["target_temperature"] = temperature
+            print(f"🎯 Target Temperature: {temperature}°C (Set via MQTT)")
         return success
     
     def set_buzzer(self, state: str) -> bool:
@@ -362,7 +353,7 @@ class KartelRealDataManager(QObject):
             # Update local status immediately for UI feedback
             current_power = self.current_data.get("power", 0)
             self.current_data["power"] = 100 if current_power == 0 else 0
-            print(f"🔥 Heater toggled: {'ON' if self.current_data['power'] > 0 else 'OFF'}")
+            print(f"🔥 Heater: {'ON' if self.current_data['power'] > 0 else 'OFF'} (Manual Toggle)")
         return success
     
     def toggle_humidifier(self) -> bool:
@@ -373,7 +364,7 @@ class KartelRealDataManager(QObject):
             # Update local status immediately for UI feedback
             current_humidifier_power = self.current_data.get("humidifier_power", 0)
             self.current_data["humidifier_power"] = 100 if current_humidifier_power == 0 else 0
-            print(f"💧 Humidifier toggled: {'ON' if self.current_data['humidifier_power'] > 0 else 'OFF'}")
+            print(f"💧 Humidifier: {'ON' if self.current_data['humidifier_power'] > 0 else 'OFF'} (Manual Toggle)")
         return success
     
     def toggle_motor(self) -> bool:
@@ -395,13 +386,13 @@ class KartelRealDataManager(QObject):
             # Stop current rotation
             self.motor_schedule["status"] = "Idle"
             self.motor_schedule["current_rotation_start"] = None
-            print(f"⏹️ Motor rotation stopped manually")
+            print(f"⏹️ Motor Rotation: STOPPED (Manual)")
             return False
         else:
             # Start manual rotation
             self.motor_schedule["current_rotation_start"] = current_time
             self.motor_schedule["status"] = "Berputar"
-            print(f"🔄 Manual motor rotation started")
+            print(f"🔄 Motor Rotation: STARTED (Manual Trigger)")
             # Send command to ESP32 if needed
             command = {"MOTOR": "ROTATE"}
             self.send_command(command)
@@ -521,14 +512,14 @@ class KartelRealDataManager(QObject):
                 self.motor_schedule["status"] = "Idle"
                 self.motor_schedule["current_rotation_start"] = None
                 self.motor_schedule["last_turn_time"] = current_time
-                print(f"✅ Motor rotation completed (10s)")
+                print(f"✅ Motor Rotation: COMPLETED (10s cycle)")
         else:
             # Motor not rotating - check if it's time to start
             if time_since_last_turn >= turn_interval:
                 # Time to start rotation
                 self.motor_schedule["current_rotation_start"] = current_time
                 self.motor_schedule["status"] = "Berputar"
-                print(f"🔄 Motor rotation started (10s every 3 hours)")
+                print(f"🔄 Motor Rotation: STARTED (10s every 3 hours)")
             else:
                 # Still waiting for next turn
                 self.motor_schedule["status"] = "Idle"
@@ -677,16 +668,11 @@ class KartelRealDataManager(QObject):
         self.user_disconnected = True
         
         if self.mqtt_client and self.is_connected:
-            print("🔌 Disconnecting from MQTT broker...")
             self.mqtt_client.loop_stop()
             self.mqtt_client.disconnect()
-            print("✅ Successfully disconnected from MQTT broker")
+            print(f"🔌 MQTT Disconnected")
         elif self.mqtt_client:
-            print("🔌 Stopping MQTT client...")
             self.mqtt_client.loop_stop()
-            print("✅ MQTT client stopped")
-        else:
-            print("ℹ️ No active MQTT connection to disconnect")
         
         self.is_connected = False
         self.connection_changed.emit(False)
@@ -726,7 +712,7 @@ class KartelRealDataManager(QObject):
         self.motor_schedule["status"] = "Idle"
         self.motor_schedule["current_rotation_start"] = None
         self.motor_schedule["waiting_for_connection"] = True
-        print(f"⏸️ Motor reset to idle state (disconnected from MQTT)")
+        print(f"⏸️ Motor Status: IDLE (MQTT Disconnected)")
     
     def log_real_data_status(self):
         """Log status penerimaan data real untuk debugging"""

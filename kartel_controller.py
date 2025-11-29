@@ -84,8 +84,6 @@ class KartelController(QObject):
         # Update device status ketika data baru datang
         device_status = self.data_manager.get_device_status()
         self.status_updated.emit(device_status)
-        
-        print(f"📊 Data real diterima dan diproses: T={data.get('temperature', 0):.1f}°C, H={data.get('humidity', 0):.1f}%")
     
     def on_connection_changed(self, connected):
         """Handle MQTT connection status change"""

@@ -71,7 +71,6 @@ class DashboardGraphComponents:
         """Initialize graph dengan data historis real dari sensor"""
         # Jika tidak ada data historis, mulai dengan data kosong
         if not hist_data["temperature"] or not hist_data["humidity"]:
-            print("📊 Tidak ada data historis, graph dimulai kosong - menunggu data real dari sensor")
             return
             
         current_time = time.time()
