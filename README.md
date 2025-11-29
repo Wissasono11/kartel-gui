@@ -8,141 +8,65 @@
   [![MQTT](https://img.shields.io/badge/MQTT-Teknohole-orange.svg)](https://mqtt.teknohole.com)
 </div>
 
-Dashboard monitoring dan kontrol inkubator telur dengan koneksi real-time MQTT ke ESP32.
+Dashboard monitoring inkubator telur dengan data real-time dari ESP32 via MQTT.
 
 ## ✨ Fitur Utama
 
-- 📊 **Real-time Monitoring** - Data suhu & kelembaban dari ESP32
-- 🔄 **Motor Pembalik** - Otomatis berputar setiap 3 jam saat terhubung MQTT
-- 🎮 **Kontrol Perangkat** - Toggle pemanas & humidifier manual
-- 📈 **Grafik Live** - Visualisasi data dengan tooltip interaktif
-- 🔌 **MQTT Integration** - Koneksi ke broker Teknohole
-- ⏰ **Timer Countdown** - Display waktu putaran berikutnya
+- 📊 **Real-time Data** - Suhu & kelembaban langsung dari ESP32
+- 🔌 **MQTT Connection** - Manual connect/disconnect ke broker
+- 📈 **Live Charts** - Grafik dengan tooltip interaktif
+- ⚙️ **Profile Settings** - Preset untuk telur ayam & bebek
+- 🎛️ **Device Status** - Monitor power & motor rotation
 
-## 🚀 Instalasi & Menjalankan
+## 🚀 Quick Start
 
 ### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Jalankan Dashboard
+### 2. Run Application
 ```bash
 python kartel_dashboard.py
 ```
 
-### 3. Koneksi MQTT (Opsional)
+### 3. Connect to MQTT
 - Username: `kartel`
-- Password: `kartel123` 
-- Klik "Hubungkan Ke Broker" di panel konfigurasi
+- Password: `kartel123`
+- Click "Hubungkan Ke Broker"
 
-## 📁 Struktur Project
-```
-KARTEL/
-├── kartel_dashboard.py    # 🎯 Main application (GUI dashboard)
-├── kartel_controller.py   # 🎮 Logic controller & MQTT handler  
-├── kartel_data.py         # 📊 Data manager & ESP32 communication
-├── config.py              # ⚙️ MQTT settings & configuration
-├── requirements.txt       # 📦 Python dependencies
-├── README.md              # 📖 Project documentation
-└── asset/                 # 🎨 UI Assets
-    ├── img/              # Logo & images
-    ├── svg/              # Custom SVG icons
-    └── style/
-        └── styles.qss    # Qt stylesheet
-```
+## 📊 Status Cards
 
-## ⚙️ Konfigurasi Profil Inkubasi
+- **Power** - Heater power status from ESP32 data
+- **Motor Pembalik** - Rotation status from ESP32 `rotate_on` data  
+- **Putaran Berikutnya** - Static timer display
 
-| Jenis Telur | Suhu Target | Kelembaban | Durasi |
-|-------------|-------------|------------|--------|
-| 🐔 **Ayam** | 38.0°C | 60% | 21 hari |
-| 🦆 **Bebek** | 37.5°C | 65% | 28 hari |
+## ⚙️ Incubation Profiles
 
-## 🔧 Cara Penggunaan
+| Type | Temperature | Duration |
+|------|-------------|----------|
+| 🐔 Ayam | 38.0°C | 21 days |
+| 🦆 Bebek | 37.5°C | 28 days |
 
-### Mode Tanpa Koneksi (Default)
-- Motor pembalik: Status **Idle**
-- Timer countdown: **03:00:00** 
-- Kontrol manual tersedia
+## 🔌 MQTT Settings
 
-### Mode Terhubung MQTT
-- Motor pembalik: Otomatis berputar **10 detik** saat connect
-- Timer countdown: Mulai hitung mundur dari **3 jam**
-- Data real-time dari ESP32
+- **Broker**: `mqtt.teknohole.com:1884`
+- **Topic**: `topic/penetasan/status`
+- **Data Format**: `{"temperature": 38.5, "humidity": 65.2, "power": 75, "rotate_on": 1}`
 
-### Panel Konfigurasi
-1. **Profil Inkubasi**: Pilih preset Ayam/Bebek
-2. **Pengaturan Manual**: Set suhu & kelembaban custom  
-3. **Kontrol Manual**: Toggle pemanas/humidifier
-4. **Koneksi MQTT**: Input kredensial untuk connect ke broker
+## 📝 Recent Updates (v4.0.0)
 
-## 🔌 MQTT Configuration
-
-**Broker Settings:**
-- Host: `mqtt.teknohole.com`
-- Port: `1884`
-- QoS: `1`
-
-**Topics:**
-- **Data sensor**: `topic/penetasan/message` 
-- **Command**: `topic/penetasan/command`
-
-## 📊 Status Sistem
-
-### Device Status Cards
-- **Pemanas**: Auto ON/OFF berdasarkan suhu target
-- **Humidifier**: Auto ON/OFF berdasarkan kelembaban target  
-- **Motor Pembalik**: Siklus 10s setiap 3 jam (saat terhubung)
-- **Timer**: Countdown waktu putaran berikutnya
-
-### Grafik Real-time
-- **Sumbu Kiri**: Suhu (°C) - garis orange
-- **Sumbu Kanan**: Kelembaban (%) - garis purple
-- **Tooltip**: Hover untuk detail nilai & waktu
-
-## 🔧 Troubleshooting
-
-**Error: ModuleNotFoundError**
-```bash
-pip install PyQt6 pyqtgraph qtawesome paho-mqtt
-```
-
-**MQTT tidak connect**
-- Pastikan kredensial benar: `kartel` / `kartel123`
-- Check koneksi internet
-- Firewall mungkin memblokir port 1884
-
-**Icons tidak muncul**
-```bash
-# Pastikan folder asset/svg/ ada dan berisi file SVG
-ls asset/svg/
-```
-
-**Motor tidak berputar**
-- Motor hanya aktif saat terhubung MQTT
-- Cek status koneksi di header dashboard
-
-## 📝 Changelog
-
-### v3.0.0 (2025-11-28)
-- ✅ MQTT connection-dependent motor control
-- ✅ Default idle state saat tidak terhubung
-- ✅ Auto motor rotation saat MQTT connect
-- ✅ Real-time countdown timer (3 jam)
-- ✅ Simplified project structure
-
-### v2.0.0 (2025-11-18)  
-- ✅ Full functional dashboard dengan real-time data
-- ✅ PyQt6 migration & modern UI
-- ✅ MQTT integration via Teknohole
+- ✅ Manual connection requirement (no auto-connect)
+- ✅ Power card shows ESP32 heater power data
+- ✅ Motor status from ESP32 `rotate_on` field
+- ✅ Removed manual device controls
+- ✅ Simplified UI - monitoring focused
+- ✅ Temperature-only setpoint configuration
 
 ---
 
 <div align="center">
 
-**🥚 KARTEL - Teknologi untuk Peternak Modern 🥚**
-
-*Built with Python & PyQt6 | MQTT Real-time Communication*
+**🥚 KARTEL - Modern Egg Incubator Monitoring 🥚**
 
 </div>
