@@ -34,7 +34,7 @@ class DashboardGraphComponents:
         # Judul
         title_layout = QHBoxLayout()
         icon_label = QLabel()
-        from dashboard_ui_components import DashboardUIComponents
+        from ui_components import DashboardUIComponents
         ui_components = DashboardUIComponents(self.parent)
         icon_label.setPixmap(ui_components.load_svg_icon("graph.svg", QSize(40, 40)))
         

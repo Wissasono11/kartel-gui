@@ -223,9 +223,27 @@ class DashboardEventHandlers:
         self.parent.connect_btn.setEnabled(True)
 
     def reset_mqtt_settings(self):
-        """Reset MQTT settings to empty (default state)"""
+        """Putuskan koneksi MQTT dengan broker dan reset settings"""
+        # Putuskan koneksi MQTT
+        if hasattr(self.parent.controller, 'data_manager'):
+            if self.parent.controller.data_manager.is_connected:
+                print("🔌 Memutuskan koneksi MQTT dengan broker...")
+                self.parent.controller.data_manager.disconnect()
+                print("✅ Koneksi MQTT berhasil diputus - Auto reconnect dinonaktifkan")
+            else:
+                print("ℹ️ MQTT sudah tidak terhubung")
+                # Set flag untuk mencegah auto reconnect
+                self.parent.controller.data_manager.user_disconnected = True
+        
+        # Kosongkan input field
         self.parent.user_input.clear()
         self.parent.pass_input.clear()
+        
+        # Update status koneksi pada UI
+        if hasattr(self.parent, 'status_connect_btn'):
+            self.parent.status_connect_btn.setText(" Tidak Terhubung")
+            self.parent.status_connect_btn.setObjectName("statusNotConnected")
+            self.parent.set_stylesheet()  # Refresh stylesheet
     
     def show_message(self, title, message):
         """Show message box with proper parent and focus"""

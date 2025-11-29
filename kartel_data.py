@@ -36,22 +36,23 @@ class KartelRealDataManager(QObject):
             "humidifier_power": 0  # Track humidifier status
         }
         
-        # Device settings and status
+        # Device settings dan status
         self.device_settings = DEFAULT_SETTINGS.copy()
-        self.is_connected = False  # Default: tidak terhubung sampai kredensial valid diinput
+        self.is_connected = False  
         self.connection_attempts = 0
         self.last_data_time = 0
+        self.user_disconnected = False  # Flag untuk mencegah auto reconnect setelah user disconnect
         
-        # Initialize motor schedule with default idle state
+        # inisiasi status motor pembalik telur
         import time
         current_time = time.time()
         self.motor_schedule = {
-            "last_turn_time": current_time - 10800,  # 3 hours ago (so ready to turn when connected)
-            "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
-            "rotation_duration": 10,  # 10 seconds
+            "last_turn_time": current_time - 10800,  
+            "turn_interval": 10800,  
+            "rotation_duration": 10,  
             "current_rotation_start": None,
-            "status": "Idle",  # Default idle state when not connected
-            "waiting_for_connection": True  # Flag to indicate we're waiting for MQTT connection
+            "status": "Idle",  # status default
+            "waiting_for_connection": True  
         }
         
         # Historical data storage
@@ -256,7 +257,11 @@ class KartelRealDataManager(QObject):
             self.historical_data["humidity"] = self.historical_data["humidity"][-max_points:]
     
     def check_connection(self):
-        """Check connection health (no auto-reconnect until credentials provided)"""
+        """Check connection health (tidak auto-reconnect jika user sudah disconnect manual)"""
+        # Jangan reconnect jika user sudah disconnect secara manual
+        if self.user_disconnected:
+            return
+            
         # Only attempt reconnection if credentials are available and we previously connected
         if (not self.is_connected and self.mqtt_client and 
             MQTT_SETTINGS["username"] and MQTT_SETTINGS["password"]):
@@ -622,6 +627,9 @@ class KartelRealDataManager(QObject):
             return False
             
         try:
+            # Reset flag user disconnected ketika user manual connect
+            self.user_disconnected = False
+            
             # Check if credentials are provided
             if not MQTT_SETTINGS["username"] or not MQTT_SETTINGS["password"]:
                 error_msg = "Username dan password MQTT diperlukan"
@@ -665,16 +673,30 @@ class KartelRealDataManager(QObject):
     
     def disconnect(self):
         """Disconnect from MQTT broker"""
-        if self.mqtt_client:
+        # Set flag bahwa user disconnect secara manual
+        self.user_disconnected = True
+        
+        if self.mqtt_client and self.is_connected:
             print("🔌 Disconnecting from MQTT broker...")
             self.mqtt_client.loop_stop()
             self.mqtt_client.disconnect()
+            print("✅ Successfully disconnected from MQTT broker")
+        elif self.mqtt_client:
+            print("🔌 Stopping MQTT client...")
+            self.mqtt_client.loop_stop()
+            print("✅ MQTT client stopped")
+        else:
+            print("ℹ️ No active MQTT connection to disconnect")
         
         self.is_connected = False
         self.connection_changed.emit(False)
         
+        # Reset motor to idle state
+        self._reset_motor_to_idle()
+        
         if hasattr(self, 'connection_timer'):
             self.connection_timer.stop()
+            print("⏹️ Connection timer stopped")
             
         if hasattr(self, 'motor_timer'):
             self.motor_timer.stop()

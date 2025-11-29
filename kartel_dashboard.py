@@ -10,10 +10,10 @@ from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QSize
 
 # Import our custom modules
 from kartel_controller import KartelController
-from dashboard_ui_components import DashboardUIComponents
-from dashboard_graph_components import DashboardGraphComponents
-from dashboard_event_handlers import DashboardEventHandlers
-from dashboard_config_panel import DashboardConfigPanel
+from ui_components import DashboardUIComponents
+from graph_components import DashboardGraphComponents
+from event_handlers import DashboardEventHandlers
+from config_panel import DashboardConfigPanel
 
 
 class KartelDashboard(QWidget):
@@ -22,12 +22,11 @@ class KartelDashboard(QWidget):
     def __init__(self):
         super().__init__()
         
-        # Initialize data structures
         self.graph_data = {
             "timestamps": [],
             "temperature": [],
             "humidity": [],
-            "max_points": 24  # Keep last 24 data points
+            "max_points": 24 
         }
         
         self.input_fields = {
@@ -35,25 +34,24 @@ class KartelDashboard(QWidget):
             'humidity': None
         }
         
-        # Initialize components
+        # inisiasi komponen UI modular
         self.ui_components = DashboardUIComponents(self)
         self.graph_components = DashboardGraphComponents(self)
         self.event_handlers = DashboardEventHandlers(self)
         self.config_panel = DashboardConfigPanel(self)
         
-        # Initialize controller
+        # controller untuk data real-time
         self.controller = KartelController()
         self.setup_controller_connections()
         
-        # Initialize UI
+        # UI
         self.load_custom_fonts()
         self.init_ui()
         
-        # Setup initial state
+        # Untuk sinkronisasi awal setelah profile diterapkan
         self.sync_initial_card_targets()
         QTimer.singleShot(500, self.force_sync_current_profile)
         
-        # Initialize display with current values from data manager
         self.update_display_from_real_data()
         
         # Setup timer untuk periodic refresh display (TANPA simulasi)
@@ -61,7 +59,7 @@ class KartelDashboard(QWidget):
         self.data_refresh_timer.timeout.connect(self.refresh_display_data)
         self.data_refresh_timer.start(2000)  # Refresh display setiap 2 detik
         
-        print("📡 Dashboard siap menerima data REAL dari topic: topic/penetasan/status")
+        print("📡 Dashboard siap menerima data REAL dari topic/penetasan/status")
     
     def setup_controller_connections(self):
         """Connect controller signals to GUI update methods"""
@@ -226,8 +224,12 @@ class KartelDashboard(QWidget):
             if self.controller.data_manager.is_connected:
                 print(f"✅ MQTT terhubung - Listening pada topic: topic/penetasan/status")
             else:
-                print(f"❌ MQTT tidak terhubung - Mencoba koneksi ulang...")
-                self.controller.data_manager.connect()
+                # Mencegah auto reconnect jika user memutus koneksi secara manual
+                if hasattr(self.controller.data_manager, 'user_disconnected') and self.controller.data_manager.user_disconnected:
+                    print(f"🚫 MQTT terputus oleh user - Tidak auto reconnect")
+                else:
+                    print(f"❌ MQTT tidak terhubung - Mencoba koneksi ulang...")
+                    self.controller.data_manager.connect()
     
     def sync_initial_card_targets(self):
         """Sync card vital targets with current profile on startup"""

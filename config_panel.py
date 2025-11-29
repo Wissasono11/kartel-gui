@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
-from dashboard_ui_components import DashboardUIComponents
+from ui_components import DashboardUIComponents
 
 
 class DashboardConfigPanel:
