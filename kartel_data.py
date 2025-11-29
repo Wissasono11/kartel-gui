@@ -44,18 +44,6 @@ class KartelRealDataManager(QObject):
         self.user_disconnected = False  # Flag untuk mencegah auto reconnect setelah user disconnect
         self.manual_connect_required = True  # Flag untuk mencegah auto connect sampai user manual connect pertama kali
         
-        # inisiasi status motor pembalik telur
-        import time
-        current_time = time.time()
-        self.motor_schedule = {
-            "last_turn_time": current_time - 10800,  
-            "turn_interval": 10800,  
-            "rotation_duration": 10,  
-            "current_rotation_start": None,
-            "status": "Idle",  # status default
-            "waiting_for_connection": True  
-        }
-        
         # Historical data storage
         self.historical_data = {
             "timestamps": [],
@@ -113,11 +101,6 @@ class KartelRealDataManager(QObject):
             
             if result == mqtt.MQTT_ERR_SUCCESS:
                 print(f"✅ MQTT Connected - Listening for sensor data on: {topic}")
-                
-                # Start motor rotation when MQTT connects for the first time
-                if self.motor_schedule["waiting_for_connection"]:
-                    self._start_motor_on_connection()
-                    print(f"🔄 Motor rotation started (connected)")
                     
             else:
                 print(f"⚠ Subscription failed: {result}")
@@ -185,6 +168,7 @@ class KartelRealDataManager(QObject):
             old_temp = self.current_data["temperature"]
             old_humidity = self.current_data["humidity"]
             old_power = self.current_data.get("power", 0)
+            old_rotate = self.current_data.get("rotate_on", 0)
             
             # Process each expected field
             for key in ["temperature", "humidity", "power", "rotate_on", "SET", "humidifier_power"]:
@@ -218,6 +202,17 @@ class KartelRealDataManager(QObject):
                 # Log power changes for heater status tracking
                 power_changed = abs(self.current_data.get("power", 0) - old_power) > 5
                 if power_changed:
+                    power_status = "ON" if self.current_data["power"] > 0 else "OFF"
+                    print(f"🔥 Heater Power: {self.current_data['power']}% ({power_status})")
+                
+                # Log motor rotation status changes from ESP32
+                rotate_changed = self.current_data.get("rotate_on", 0) != old_rotate
+                if rotate_changed:
+                    motor_status = "Berputar" if self.current_data["rotate_on"] == 1 else "Idle"
+                    print(f"🔄 Motor Status: {motor_status} (dari ESP32)")
+                
+                # Only log data status occasionally to avoid spam
+                if temp_changed or humidity_changed or power_changed or rotate_changed:
                     power_status = "ON" if self.current_data["power"] > 0 else "OFF"
                     print(f"🔥 Heater Power: {self.current_data['power']}% ({power_status})")
                 
@@ -345,58 +340,7 @@ class KartelRealDataManager(QObject):
             self.device_settings["relay_interval"] = interval
         return success
     
-    def toggle_heater(self) -> bool:
-        """Toggle heater manually"""
-        command = {"HEATER": "TOGGLE"}
-        success = self.send_command(command)
-        if success:
-            # Update local status immediately for UI feedback
-            current_power = self.current_data.get("power", 0)
-            self.current_data["power"] = 100 if current_power == 0 else 0
-            print(f"🔥 Heater: {'ON' if self.current_data['power'] > 0 else 'OFF'} (Manual Toggle)")
-        return success
-    
-    def toggle_humidifier(self) -> bool:
-        """Toggle humidifier manually"""
-        command = {"HUMIDIFIER": "TOGGLE"}
-        success = self.send_command(command)
-        if success:
-            # Update local status immediately for UI feedback
-            current_humidifier_power = self.current_data.get("humidifier_power", 0)
-            self.current_data["humidifier_power"] = 100 if current_humidifier_power == 0 else 0
-            print(f"💧 Humidifier: {'ON' if self.current_data['humidifier_power'] > 0 else 'OFF'} (Manual Toggle)")
-        return success
-    
-    def toggle_motor(self) -> bool:
-        """Manually trigger motor rotation"""
-        # Immediately start manual rotation regardless of schedule
-        import time
-        current_time = time.time()
-        
-        if not hasattr(self, 'motor_schedule'):
-            self.motor_schedule = {
-                "last_turn_time": current_time - 10800,
-                "turn_interval": 10800,
-                "rotation_duration": 10,
-                "current_rotation_start": None,
-                "status": "Idle"
-            }
-        
-        if self.motor_schedule["status"] == "Berputar":
-            # Stop current rotation
-            self.motor_schedule["status"] = "Idle"
-            self.motor_schedule["current_rotation_start"] = None
-            print(f"⏹️ Motor Rotation: STOPPED (Manual)")
-            return False
-        else:
-            # Start manual rotation
-            self.motor_schedule["current_rotation_start"] = current_time
-            self.motor_schedule["status"] = "Berputar"
-            print(f"🔄 Motor Rotation: STARTED (Manual Trigger)")
-            # Send command to ESP32 if needed
-            command = {"MOTOR": "ROTATE"}
-            self.send_command(command)
-            return True
+
     
     # ========== Interface Methods for Controller ==========
     
@@ -423,64 +367,20 @@ class KartelRealDataManager(QObject):
     
     def get_device_status(self) -> Dict[str, Any]:
         """Get device status based on real sensor data and MQTT commands"""
-        import time
-        
-        current_time = time.time()
-        
-        # Initialize motor schedule if not exists
-        if not hasattr(self, 'motor_schedule'):
-            self.motor_schedule = {
-                "last_turn_time": current_time - 10800,  # 3 hours ago
-                "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
-                "rotation_duration": 10,  # 10 seconds
-                "current_rotation_start": None,
-                "status": "Idle",
-                "waiting_for_connection": True
-            }
-        
-        # Check connection status and update motor accordingly
-        if not self.is_connected:
-            # When not connected, motor stays idle and countdown shows default 3:00:00
-            self.motor_schedule["status"] = "Idle"
-            self.motor_schedule["current_rotation_start"] = None
-            countdown_text = "03:00:00"
-        else:
-            # Update motor status based on schedule when connected
-            self._update_motor_status(current_time)
-            
-            # Calculate countdown based on motor status
-            if self.motor_schedule["status"] == "Berputar":
-                if self.motor_schedule["current_rotation_start"] is not None:
-                    rotation_elapsed = current_time - self.motor_schedule["current_rotation_start"]
-                    remaining_time = max(0, int(self.motor_schedule["rotation_duration"] - rotation_elapsed))
-                    countdown_text = f"{remaining_time}s"
-                else:
-                    countdown_text = "Berputar"
-            else:
-                # Calculate time until next rotation
-                time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
-                remaining_time = max(0, int(self.motor_schedule["turn_interval"] - time_since_last_turn))
-                hours = remaining_time // 3600
-                minutes = (remaining_time % 3600) // 60
-                seconds = remaining_time % 60
-                countdown_text = f"{hours}:{minutes:02d}:{seconds:02d}"
-        
+        # Motor status now directly from MQTT rotate_on data
         return {
-            "pemanas": {
-                "status": "Aktif" if self.current_data["power"] > 0 else "Non-aktif",
+            "power": {
+                "value": self.current_data["power"],
+                "status": "ON" if self.current_data["power"] > 0 else "OFF",
                 "active": self.current_data["power"] > 0
             },
-            "humidifier": {
-                "status": "Aktif" if self.current_data.get("humidifier_power", 0) > 0 else "Non-aktif",
-                "active": self.current_data.get("humidifier_power", 0) > 0
-            },
             "motor": {
-                "status": self.motor_schedule["status"],
-                "active": self.motor_schedule["status"] == "Berputar",
-                "rotation_time": remaining_time if self.motor_schedule["status"] == "Berputar" else 0
+                "status": "Berputar" if self.current_data.get("rotate_on", 0) == 1 else "Idle",
+                "active": self.current_data.get("rotate_on", 0) == 1,
+                "rotation_time": 0  # Not needed when using MQTT data
             },
             "timer": {
-                "countdown": countdown_text
+                "countdown": "03:00:00"  # Static display since rotation is now MQTT-controlled
             },
             "buzzer": {
                 "status": self.device_settings.get("buzzer_state", "OFF"),
@@ -488,60 +388,16 @@ class KartelRealDataManager(QObject):
             }
         }
     
-    def _update_motor_status(self, current_time: float):
-        """Update motor status based on 3-hour schedule (only when connected)"""
-        # Only update motor status if connected to MQTT
-        if not self.is_connected:
-            self.motor_schedule["status"] = "Idle"
-            self.motor_schedule["current_rotation_start"] = None
-            return
-            
-        time_since_last_turn = current_time - self.motor_schedule["last_turn_time"]
-        turn_interval = self.motor_schedule["turn_interval"]
-        rotation_duration = self.motor_schedule["rotation_duration"]
-        
-        # Check if motor is currently rotating
-        if self.motor_schedule["current_rotation_start"] is not None:
-            rotation_elapsed = current_time - self.motor_schedule["current_rotation_start"]
-            
-            if rotation_elapsed < rotation_duration:
-                # Motor is currently rotating
-                self.motor_schedule["status"] = "Berputar"
-            else:
-                # Rotation finished, set to idle
-                self.motor_schedule["status"] = "Idle"
-                self.motor_schedule["current_rotation_start"] = None
-                self.motor_schedule["last_turn_time"] = current_time
-                print(f"✅ Motor Rotation: COMPLETED (10s cycle)")
-        else:
-            # Motor not rotating - check if it's time to start
-            if time_since_last_turn >= turn_interval:
-                # Time to start rotation
-                self.motor_schedule["current_rotation_start"] = current_time
-                self.motor_schedule["status"] = "Berputar"
-                print(f"🔄 Motor Rotation: STARTED (10s every 3 hours)")
-            else:
-                # Still waiting for next turn
-                self.motor_schedule["status"] = "Idle"
+
     
     def update_motor_realtime(self):
-        """Real-time motor status update every second"""
-        import time
-        current_time = time.time()
+        """Update motor status in real-time using MQTT rotate_on data"""
+        # Motor status now directly from MQTT rotate_on data
+        # No need for internal scheduling logic
         
-        # Initialize motor schedule if not exists
-        if not hasattr(self, 'motor_schedule'):
-            self.motor_schedule = {
-                "last_turn_time": current_time - 10800,  # 3 hours ago
-                "turn_interval": 10800,  # 3 hours in seconds (3*60*60)
-                "rotation_duration": 10,  # 10 seconds
-                "current_rotation_start": None,
-                "status": "Idle",
-                "waiting_for_connection": True
-            }
-        
-        # Update motor status (only when connected)
-        self._update_motor_status(current_time)
+        # Emit device status update
+        device_status = self.get_device_status()
+        self.emit_status_update(device_status)
         
         # Emit device status update for real-time GUI refresh
         device_status = self.get_device_status()
@@ -590,24 +446,25 @@ class KartelRealDataManager(QObject):
         }
     
     def get_incubation_profiles(self) -> List[Dict]:
-        """Get available incubation profiles"""
+        """Get available incubation profiles (temperature only)"""
         return [
-            {"name": "Ayam (38°C, 60%)", "temperature": 38.0, "humidity": 60.0, "duration": 21},
-            {"name": "Bebek (37.5°C, 65%)", "temperature": 37.5, "humidity": 65.0, "duration": 28}
+            {"name": "Ayam (38°C)", "temperature": 38.0, "duration": 21},
+            {"name": "Bebek (37.5°C)", "temperature": 37.5, "duration": 28}
         ]
     
     def apply_profile(self, profile_name: str) -> bool:
-        """Apply incubation profile"""
+        """Apply incubation profile (temperature only)"""
         profiles = self.get_incubation_profiles()
         for profile in profiles:
             if profile["name"] == profile_name:
-                # Update both temperature and humidity targets
+                # Update temperature target only
                 temp_success = self.set_target_temperature(profile["temperature"])
-                self.device_settings["target_humidity"] = profile["humidity"]
+                # Use default humidity (60%) for all profiles
+                self.device_settings["target_humidity"] = 60.0
                 
                 if temp_success:
                     self.device_settings["total_days"] = profile["duration"]
-                    print(f"✅ Profile '{profile_name}' applied: {profile['temperature']}°C, {profile['humidity']}%")
+                    print(f"✅ Profile '{profile_name}' applied: {profile['temperature']}°C, Default Humidity: 60%")
                 return temp_success
         return False
     
@@ -677,9 +534,6 @@ class KartelRealDataManager(QObject):
         self.is_connected = False
         self.connection_changed.emit(False)
         
-        # Reset motor to idle state
-        self._reset_motor_to_idle()
-        
         if hasattr(self, 'connection_timer'):
             self.connection_timer.stop()
             print("⏹️ Connection timer stopped")
@@ -688,31 +542,9 @@ class KartelRealDataManager(QObject):
             self.motor_timer.stop()
             print("⏹️ Motor real-time timer stopped")
     
-    def _start_motor_on_connection(self):
-        """Start motor rotation when MQTT first connects"""
-        import time
-        current_time = time.time()
-        
-        # Clear waiting flag
-        self.motor_schedule["waiting_for_connection"] = False
-        
-        # Start immediate rotation upon connection
-        self.motor_schedule["current_rotation_start"] = current_time
-        self.motor_schedule["status"] = "Berputar"
-        self.motor_schedule["last_turn_time"] = current_time
-        
-        print(f"🔄 Motor rotation started immediately upon MQTT connection (10s)")
-        
-        # Send motor command to ESP32 if needed
-        command = {"MOTOR": "ROTATE"}
-        self.send_command(command)
+
     
-    def _reset_motor_to_idle(self):
-        """Reset motor to idle state when MQTT disconnects"""
-        self.motor_schedule["status"] = "Idle"
-        self.motor_schedule["current_rotation_start"] = None
-        self.motor_schedule["waiting_for_connection"] = True
-        print(f"⏸️ Motor Status: IDLE (MQTT Disconnected)")
+
     
     def log_real_data_status(self):
         """Log status penerimaan data real untuk debugging"""

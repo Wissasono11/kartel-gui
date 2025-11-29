@@ -105,8 +105,8 @@ class DashboardUIComponents:
             icon_size=QSize(50, 50),
             title="KELEMBABAN",
             current_value="58.0%",
-            target_value="60.0%",
-            description="Setpoint yang diinginkan",
+            target_value=None,  # No target display for humidity
+            description=None,   # No target description
             object_name="kelembabanCard"
         )
         vitals_layout.addWidget(self.parent.humidity_card)
@@ -150,28 +150,31 @@ class DashboardUIComponents:
         card_layout.addWidget(current_value_label)
         card_layout.addSpacing(10)
 
-        # Target
-        target_box = QFrame()
-        target_box.setObjectName("targetBox")
-        target_box_layout = QVBoxLayout(target_box)
-        target_box_layout.setContentsMargins(12, 8, 12, 8)
-        
-        target_label = QLabel(f"Target: {target_value}")
-        target_label.setObjectName("vitalTarget")
-        
-        # Store references for updates
-        if title == "SUHU":
-            self.parent.temp_target_label = target_label
-        elif title == "KELEMBABAN":
-            self.parent.humidity_target_label = target_label
-        
-        target_desc_label = QLabel(description)
-        target_desc_label.setObjectName("vitalTargetDesc")
-        
-        target_box_layout.addWidget(target_label)
-        target_box_layout.addWidget(target_desc_label)
-        
-        card_layout.addWidget(target_box)
+        # Target (only if target_value is provided)
+        if target_value is not None and description is not None:
+            target_box = QFrame()
+            target_box.setObjectName("targetBox")
+            target_box_layout = QVBoxLayout(target_box)
+            target_box_layout.setContentsMargins(12, 8, 12, 8)
+            
+            target_label = QLabel(f"Target: {target_value}")
+            target_label.setObjectName("vitalTarget")
+            
+            # Store references for updates (only for temperature)
+            if title == "SUHU":
+                self.parent.temp_target_label = target_label
+            
+            target_desc_label = QLabel(description)
+            target_desc_label.setObjectName("vitalTargetDesc")
+            
+            target_box_layout.addWidget(target_label)
+            target_box_layout.addWidget(target_desc_label)
+            
+            card_layout.addWidget(target_box)
+        else:
+            # For humidity card, add some spacing to maintain visual balance
+            if title == "KELEMBABAN":
+                card_layout.addSpacing(20)
         
         return card
     
@@ -202,13 +205,11 @@ class DashboardUIComponents:
         status_cards_layout.setSpacing(15)
 
         # Create status cards with references
-        self.parent.pemanas_card = self.create_single_status_card("pemanas.svg", "Pemanas", "Aktif", "statusAktif")
-        self.parent.humidifier_card = self.create_single_status_card("humidifier.svg", "Humidifier", "Non-aktif", "statusNonAktif")
+        self.parent.power_card = self.create_single_status_card("pemanas.svg", "Power", "OFF", "statusNonAktif")
         self.parent.motor_card = self.create_single_status_card("motor-dinamo.svg", "Motor Pembalik", "Idle", "statusMotorIdle")
         self.parent.timer_card = self.create_single_status_card("sand-clock.svg", "Putaran Berikutnya", "03:00:00", "statusTimer")
         
-        status_cards_layout.addWidget(self.parent.pemanas_card)
-        status_cards_layout.addWidget(self.parent.humidifier_card)
+        status_cards_layout.addWidget(self.parent.power_card)
         status_cards_layout.addWidget(self.parent.motor_card)
         status_cards_layout.addWidget(self.parent.timer_card)
         
@@ -243,10 +244,8 @@ class DashboardUIComponents:
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # Store references
-        if "Pemanas" in title:
-            self.parent.pemanas_status_label = status_label
-        elif "Humidifier" in title:
-            self.parent.humidifier_status_label = status_label
+        if "Power" in title:
+            self.parent.power_status_label = status_label
         elif "Motor" in title:
             self.parent.motor_status_label = status_label
         elif "Putaran" in title:

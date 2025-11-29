@@ -27,66 +27,40 @@ class DashboardEventHandlers:
             
         success = self.parent.controller.apply_profile(profile_name)
         if success:
-            # Update input fields to match profile values
+            # Update input field to match profile value (only temperature)
             self.parent.suhu_input.setText(str(selected_profile["temperature"]))
-            self.parent.kelembaban_input.setText(str(selected_profile["humidity"]))
+            # Humidity input field removed
             
-            # Update card vital targets immediately with profile values
+            # Update card vital targets immediately with profile values (use default humidity)
+            default_humidity = 60.0  # Default humidity for all profiles
             self.parent.update_vital_card_targets(
                 selected_profile["temperature"], 
-                selected_profile["humidity"]
+                default_humidity
             )
             
             # Use QTimer to ensure message appears on top after UI updates
-            QTimer.singleShot(100, lambda: self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!\nTarget: {selected_profile['temperature']}°C, {selected_profile['humidity']}%"))
+            QTimer.singleShot(100, lambda: self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!\nTarget Suhu: {selected_profile['temperature']}°C"))
 
     def apply_settings(self):
-        """Apply temperature and humidity settings"""
+        """Apply temperature settings (humidity removed from UI)"""
         try:
             temp = float(self.parent.suhu_input.text())
-            humidity = float(self.parent.kelembaban_input.text())
             
-            # Validate ranges
+            # Validate range for temperature only
             if not (30.0 <= temp <= 45.0):
                 self.show_message("Error", "Suhu harus dalam rentang 30.0-45.0°C!")
                 return
-            
-            if not (40.0 <= humidity <= 80.0):
-                self.show_message("Error", "Kelembaban harus dalam rentang 40.0-80.0%!")
-                return
                 
             self.parent.controller.set_target_temperature(temp)
-            self.parent.controller.set_target_humidity(humidity)
+            # Humidity setting removed from UI
             
-            # Update card vital targets immediately
-            self.parent.update_vital_card_targets(temp, humidity)
+            # Update card vital targets (temperature only, use default humidity)
+            default_humidity = 60.0  # Default humidity value
+            self.parent.update_vital_card_targets(temp, default_humidity)
             
-            self.show_message("Sukses", "Pengaturan berhasil diterapkan!")
+            self.show_message("Sukses", "Pengaturan suhu berhasil diterapkan!")
         except ValueError:
-            self.show_message("Error", "Mohon masukkan nilai yang valid!")
-
-    def toggle_device(self, device):
-        """Toggle device on/off with real-time status update"""
-        result = self.parent.controller.toggle_device(device)
-        
-        # Get current device status to determine actual state
-        device_status = self.parent.controller.data_manager.get_device_status()
-        
-        # Determine actual status message based on real device state
-        if device == "pemanas":
-            is_active = device_status.get("pemanas", {}).get("active", False)
-            status = "diaktifkan" if is_active else "dinonaktifkan"
-        elif device == "humidifier":
-            is_active = device_status.get("humidifier", {}).get("active", False)
-            status = "diaktifkan" if is_active else "dinonaktifkan"
-        else:
-            # For other devices, use the toggle result
-            status = "diaktifkan" if result else "dinonaktifkan"
-        
-        # Immediately update device status display for better UX
-        self.parent.update_device_status_display(device_status)
-        
-        self.show_message("Info", f"{device.capitalize()} berhasil {status}!")
+            self.show_message("Error", "Mohon masukkan nilai suhu yang valid!")
 
     def validate_temperature_input(self, text):
         """Validate temperature input"""
@@ -99,55 +73,39 @@ class DashboardEventHandlers:
         except ValueError:
             if text:  # Only show error if there's text
                 self.parent.suhu_input.setStyleSheet("border: 2px solid red;")
-
-    def validate_humidity_input(self, text):
-        """Validate humidity input"""
-        try:
-            value = float(text)
-            if not (60.0 <= value <= 80.0):
-                self.parent.kelembaban_input.setStyleSheet("border: 2px solid red;")
-            else:
-                self.parent.kelembaban_input.setStyleSheet("")
-        except ValueError:
-            if text:
-                self.parent.kelembaban_input.setStyleSheet("border: 2px solid red;")
     
     def on_manual_setpoint_change(self, text):
-        """Handle real-time manual setpoint changes"""
+        """Handle real-time manual setpoint changes (temperature only)"""
         try:
-            # Get current values from both inputs
+            # Get current temperature value
             temp_text = self.parent.suhu_input.text()
-            humidity_text = self.parent.kelembaban_input.text()
             
-            # Only update if both values are valid
-            if temp_text and humidity_text:
+            # Only update if temperature value is valid
+            if temp_text:
                 temp = float(temp_text)
-                humidity = float(humidity_text)
                 
-                # Validate ranges
-                if (30.0 <= temp <= 45.0) and (40.0 <= humidity <= 80.0):
-                    # Update card vital targets in real-time (preview mode)
+                # Validate temperature range
+                if (30.0 <= temp <= 45.0):
+                    # Update temperature target in real-time
                     self.parent.temp_target_label.setText(f"Target: {temp}°C")
-                    self.parent.humidity_target_label.setText(f"Target: {humidity}%")
                     
-                    # Check if current values match any profile
-                    self.update_profile_indicator(temp, humidity)
+                    # Check if current temperature matches any profile (use default humidity)
+                    default_humidity = 60.0  # Default humidity for profile matching
+                    self.update_profile_indicator(temp, default_humidity)
                     
         except ValueError:
-            # If invalid input, revert to last known good values
+            # If invalid input, revert to last known good temperature value
             target_data = self.parent.controller.data_manager.get_target_values()
             self.parent.temp_target_label.setText(f"Target: {target_data['temperature']}°C")
-            self.parent.humidity_target_label.setText(f"Target: {target_data['humidity']}%")
 
     def update_profile_indicator(self, temp, humidity):
-        """Update profile combo to show if current settings match any profile"""
+        """Update profile combo to show if current temperature matches any profile"""
         profiles = self.parent.controller.get_incubation_profiles()
         
-        # Check if current values match any profile
+        # Check if current temperature matches any profile (ignore humidity)
         matching_profile = None
         for profile in profiles:
-            if (abs(profile["temperature"] - temp) < 0.1 and 
-                abs(profile["humidity"] - humidity) < 0.1):
+            if abs(profile["temperature"] - temp) < 0.1:
                 matching_profile = profile["name"]
                 break
         

@@ -174,10 +174,10 @@ class KartelDashboard(QWidget):
             self.temp_current_label.setText(f"{current_readings['temperature']:.1f}°C")
             self.humidity_current_label.setText(f"{current_readings['humidity']:.1f}%")
         
-        # Update target displays
-        if hasattr(self, 'temp_target_label') and hasattr(self, 'humidity_target_label'):
+        # Update target displays (only temperature)
+        if hasattr(self, 'temp_target_label'):
             self.temp_target_label.setText(f"Target: {target_values['temperature']:.1f}°C")
-            self.humidity_target_label.setText(f"Target: {target_values['humidity']:.1f}%")
+        # No humidity target label to update
         
         # Update graph dengan data yang sama
         if len(self.graph_data["temperature"]) == 0:
@@ -237,9 +237,9 @@ class KartelDashboard(QWidget):
     # === UPDATE METHODS ===
     
     def update_vital_card_targets(self, temperature, humidity):
-        """Update target values in vital cards immediately"""
+        """Update target values in vital cards (only temperature has target display)"""
         self.temp_target_label.setText(f"Target: {temperature}°C")
-        self.humidity_target_label.setText(f"Target: {humidity}%")
+        # No humidity target label to update since it's been removed
         
         # Update graph menggunakan data real dari sensor
         current_readings = self.controller.data_manager.get_current_readings()
@@ -264,12 +264,11 @@ class KartelDashboard(QWidget):
         """
         
         self.temp_target_label.setStyleSheet(highlight_style)
-        self.humidity_target_label.setStyleSheet(highlight_style)
+        # No humidity target label since it's been removed
         
         # Reset after short delay
         QTimer.singleShot(500, lambda: (
-            self.temp_target_label.setStyleSheet(original_style),
-            self.humidity_target_label.setStyleSheet(original_style)
+            self.temp_target_label.setStyleSheet(original_style)
         ))
     
     def update_graph_with_real_data(self, temperature, humidity):
@@ -305,9 +304,9 @@ class KartelDashboard(QWidget):
         self.temp_current_label.setText(f"{current['temperature']:.1f}°C")
         self.humidity_current_label.setText(f"{current['humidity']:.1f}%")
         
-        # Update targets
+        # Update targets (only temperature has target display)
         self.temp_target_label.setText(f"Target: {target['temperature']:.1f}°C")
-        self.humidity_target_label.setText(f"Target: {target['humidity']:.1f}%")
+        # No humidity target label to update
         
         # Update graph dengan data real dari sensor
         self.update_graph_with_real_data(current['temperature'], current['humidity'])
@@ -340,21 +339,18 @@ class KartelDashboard(QWidget):
     @pyqtSlot(dict)
     def update_device_status_display(self, status):
         """Update device status display with real-time data"""
-        # Update pemanas (heater)
-        if "pemanas" in status:
-            self.pemanas_status_label.setText(status["pemanas"]["status"])
-            if status["pemanas"]["active"]:
-                self.pemanas_status_label.setObjectName("statusAktif")
+        # Update power status based on MQTT power data
+        if "power" in status:
+            power_value = status["power"]["value"]
+            power_status = status["power"]["status"]
+            self.power_status_label.setText(f"{power_status} ({power_value}%)")
+            if status["power"]["active"]:
+                self.power_status_label.setObjectName("statusAktif")
             else:
-                self.pemanas_status_label.setObjectName("statusNonAktif")
-        
-        # Update humidifier  
-        if "humidifier" in status:
-            self.humidifier_status_label.setText(status["humidifier"]["status"])
-            if status["humidifier"]["active"]:
-                self.humidifier_status_label.setObjectName("statusAktif")
-            else:
-                self.humidifier_status_label.setObjectName("statusNonAktif")
+                self.power_status_label.setObjectName("statusNonAktif")
+            # Refresh style
+            self.power_status_label.style().unpolish(self.power_status_label)
+            self.power_status_label.style().polish(self.power_status_label)
         
         # Update motor with countdown display
         if "motor" in status:

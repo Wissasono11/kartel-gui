@@ -248,45 +248,7 @@ QPushButton#applyButton:hover {
     background-color: #4338ca; /* Indigo-700 */
 }
 
-/* Kontrol Manual - Tombol Toggle Pemanas */
-QPushButton#heaterButton {
-    background-color: #FEF3C7;
-    border: 2px solid #F59E0B;
-    border-radius: 12px;
-    color: #92400E;
-    font-weight: 500;
-    font-size: 14px;
-    padding: 12px 16px;
-    text-align: center;
-    min-height: 20px;
-}
-QPushButton#heaterButton:hover {
-    background-color: #FDE68A;
-}
-QPushButton#heaterButton:pressed {
-    background-color: #F59E0B;
-    color: white;
-}
-
-/* Kontrol Manual - Tombol Toggle Humidifier */
-QPushButton#humidifierButton {
-    background-color: #DDD6FE;
-    border: 2px solid #8B5CF6;
-    border-radius: 12px;
-    color: #5B21B6;
-    font-weight: 500;
-    font-size: 14px;
-    padding: 12px 16px;
-    text-align: center;
-    min-height: 20px;
-}
-QPushButton#humidifierButton:hover {
-    background-color: #C4B5FD;
-}
-QPushButton#humidifierButton:pressed {
-    background-color: #8B5CF6;
-    color: white;
-}
+/* Manual control buttons removed - not needed */
 
 QPushButton#cancelButton {
     background-color: #ffffff;

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
-from ui_components import DashboardUIComponents
+from dashboard_ui_components import DashboardUIComponents
 
 
 class DashboardConfigPanel:
@@ -43,8 +43,6 @@ class DashboardConfigPanel:
         
         # Setpoint section
         self.add_setpoint_section(config_layout)
-        
-        # Manual control section removed - not needed
         
         # MQTT section
         self.add_mqtt_section(config_layout)
@@ -98,17 +96,9 @@ class DashboardConfigPanel:
                 # Sync input field with default profile (only temperature)
                 self.parent.suhu_input.setText(str(default_profile["temperature"]))
                 # Humidity input field removed
-                
-                # Force update card targets on startup (use default humidity)
-                default_humidity = 60.0
-                self.parent.update_vital_card_targets(
-                    default_profile["temperature"], 
-                    default_humidity
-                )
         
-        # Store references for cross-updates (only temperature)
+        # Store references for cross-updates (temperature only)
         self.parent.input_fields['temperature'] = self.parent.suhu_input
-        # Humidity input field removed
         
         apply_btn = QPushButton("Terapkan Pengaturan")
         apply_btn.setObjectName("applyButton")
@@ -116,9 +106,9 @@ class DashboardConfigPanel:
         layout.addWidget(apply_btn)
         
         layout.addWidget(self.ui_components.create_divider())
-        
-        # Manual control section removed - not needed
-        
+    
+
+    
     def add_mqtt_section(self, layout):
         """Add MQTT configuration section"""
         layout.addWidget(self.ui_components.create_form_label("Koneksi MQTT"))

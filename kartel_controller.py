@@ -121,23 +121,6 @@ class KartelController(QObject):
         """Set relay timing"""
         return self.data_manager.set_relay_timing(on_time, interval)
     
-    def toggle_device(self, device: str):
-        """Toggle device on/off"""
-        # Map GUI device names to real commands
-        if device == "pemanas" or device == "heater":
-            return self.data_manager.toggle_heater()
-        elif device == "humidifier":
-            return self.data_manager.toggle_humidifier()
-        elif device == "motor":
-            return self.data_manager.toggle_motor()
-        elif device == "buzzer":
-            current_state = getattr(self.data_manager, 'device_settings', {}).get('buzzer_state', 'OFF')
-            new_state = 'OFF' if current_state == 'ON' else 'ON'
-            return self.control_buzzer(new_state)
-        else:
-            print(f"⚠ Device '{device}' toggle not implemented")
-            return False
-    
     def apply_profile(self, profile_name: str):
         """Apply incubation profile"""
         return self.data_manager.apply_profile(profile_name)
