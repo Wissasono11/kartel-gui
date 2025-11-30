@@ -1,4 +1,4 @@
-# Connection Type: 'MQTT' untuk koneksi real-time ke sensor
+# Untuk koneksi real-time ke sensor
 CONNECTION_TYPE = 'MQTT'
 
 # MQTT Settings untuk menerima data real dari sensor ESP32 via Teknohole

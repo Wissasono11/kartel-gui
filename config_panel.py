@@ -8,14 +8,14 @@ from ui_components import DashboardUIComponents
 
 
 class DashboardConfigPanel:
-    """Contains configuration panel creation methods"""
+    """Berisi metode untuk membuat panel konfigurasi"""
     
     def __init__(self, parent):
         self.parent = parent
         self.ui_components = DashboardUIComponents(parent)
     
     def create_config_panel(self):
-        """Create configuration panel"""
+        """Membuat panel konfigurasi"""
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setObjectName("configScrollArea")
@@ -25,7 +25,7 @@ class DashboardConfigPanel:
         config_layout = QVBoxLayout(config_widget)
         config_layout.setSpacing(20)
         
-        # Judul
+        # Bagian judul
         title_layout = QHBoxLayout()
         icon_label = QLabel()
         icon_label.setPixmap(self.ui_components.load_svg_icon("settings.svg", QSize(40, 40)))
@@ -38,34 +38,32 @@ class DashboardConfigPanel:
         title_layout.addStretch()
         config_layout.addLayout(title_layout)
         
-        # Profile section
+        # Bagian profil
         self.add_profile_section(config_layout)
         
-        # Setpoint section
+        # Bagian setpoint
         self.add_setpoint_section(config_layout)
         
-        # Manual control section removed - not needed
-        
-        # MQTT section
+        # Bagian MQTT
         self.add_mqtt_section(config_layout)
         
-        # Info section
+        # Bagian informasi
         self.add_info_section(config_layout)
         
         config_layout.addStretch()
 
-        # Action buttons
+        # Tombol aksi
         self.add_action_buttons(config_layout)
         
         scroll_area.setWidget(config_widget)
         return scroll_area
     
     def add_profile_section(self, layout):
-        """Add profile selection section"""
+        """Menambahkan bagian pemilihan profil"""
         layout.addWidget(self.ui_components.create_form_label("Profil Inkubasi"))
         self.parent.profil_combo = QComboBox()
         
-        # Load profiles from controller
+        # Muat profil dari controller
         profiles = self.parent.controller.get_incubation_profiles()
         for profile in profiles:
             self.parent.profil_combo.addItem(profile["name"])
@@ -74,11 +72,11 @@ class DashboardConfigPanel:
         layout.addWidget(self.parent.profil_combo)
     
     def add_setpoint_section(self, layout):
-        """Add setpoint configuration section"""
+        """Menambahkan bagian konfigurasi setpoint"""
         layout.addWidget(self.ui_components.create_form_label("Pengaturan Setpoint"))
         layout.addWidget(QLabel("Target Suhu(°C)"))
         
-        # Get current target values from controller
+        # Dapatkan nilai target saat ini dari controller
         target_data = self.parent.controller.data_manager.get_target_values()
         
         self.parent.suhu_input = QLineEdit(str(target_data["temperature"]))
@@ -86,30 +84,26 @@ class DashboardConfigPanel:
         self.parent.suhu_input.textChanged.connect(self.parent.event_handlers.on_manual_setpoint_change)
         layout.addWidget(self.parent.suhu_input)
         
-        # Removed humidity input field as it's not needed
-        
-        # Apply default profile after input fields are created
+        # Terapkan profil default setelah field input dibuat
         profiles = self.parent.controller.get_incubation_profiles()
         if profiles:
             default_profile = profiles[0]
-            # Apply default profile quietly
+            # Terapkan profil default secara diam-diam
             success = self.parent.controller.apply_profile(default_profile["name"])
             if success:
-                # Sync input field with default profile (only temperature)
+                # Sinkronkan field input dengan profil default 
                 self.parent.suhu_input.setText(str(default_profile["temperature"]))
-                # Humidity input field removed
+                # Field input kelembaban telah dihapus dihapus
                 
-                # Force update card targets on startup (use default humidity)
+                # Paksa update target kartu saat startup
                 default_humidity = 60.0
                 self.parent.update_vital_card_targets(
                     default_profile["temperature"], 
                     default_humidity
                 )
         
-        # Store references for cross-updates (only temperature)
-        self.parent.input_fields['temperature'] = self.parent.suhu_input
-        # Humidity input field removed
-        
+        # Simpan referensi untuk update 
+        self.parent.input_fields['temperature'] = self.parent.suhu_input        
         apply_btn = QPushButton("Terapkan Pengaturan")
         apply_btn.setObjectName("applyButton")
         apply_btn.clicked.connect(self.parent.event_handlers.apply_settings)
@@ -117,13 +111,11 @@ class DashboardConfigPanel:
         
         layout.addWidget(self.ui_components.create_divider())
         
-        # Manual control section removed - not needed
-        
     def add_mqtt_section(self, layout):
-        """Add MQTT configuration section"""
+        """Menambahkan bagian konfigurasi MQTT"""
         layout.addWidget(self.ui_components.create_form_label("Koneksi MQTT"))
         
-        # Username
+        # Nama pengguna
         username_layout = QHBoxLayout()
         username_icon = QLabel()
         username_icon.setPixmap(self.ui_components.load_svg_icon("username.svg", QSize(24, 24)))
@@ -137,7 +129,7 @@ class DashboardConfigPanel:
         self.parent.user_input.setPlaceholderText("Masukkan username MQTT")
         layout.addWidget(self.parent.user_input)
         
-        # Password
+        # Kata sandi
         password_layout = QHBoxLayout()
         password_icon = QLabel()
         password_icon.setPixmap(self.ui_components.load_svg_icon("password.svg", QSize(24, 24)))
@@ -153,7 +145,7 @@ class DashboardConfigPanel:
         layout.addWidget(self.parent.pass_input)
     
     def add_info_section(self, layout):
-        """Add information section"""
+        """Menambahkan bagian informasi"""
         info_box = QFrame()
         info_box.setObjectName("infoBox")
         
@@ -184,7 +176,7 @@ class DashboardConfigPanel:
         layout.addWidget(info_box)
     
     def add_action_buttons(self, layout):
-        """Add action buttons"""
+        """Menambahkan tombol aksi"""
         button_layout = QHBoxLayout()
         cancel_btn = QPushButton("Putuskan Koneksi")
         cancel_btn.setObjectName("disconnectButton")

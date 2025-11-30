@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QFont, QFontDatabase, QIcon
 from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QSize
 
-# Import our custom modules
+# Import modul kustom kami
 from kartel_controller import KartelController
 from ui_components import DashboardUIComponents
 from graph_components import DashboardGraphComponents
@@ -17,7 +17,7 @@ from config_panel import DashboardConfigPanel
 
 
 class KartelDashboard(QWidget):
-    """Main dashboard class - modular design for better maintainability"""
+    """Kelas dashboard utama - desain modular untuk maintainability yang lebih baik"""
     
     def __init__(self):
         super().__init__()
@@ -34,27 +34,27 @@ class KartelDashboard(QWidget):
             'humidity': None
         }
         
-        # inisiasi komponen UI modular
+        # Inisiasi komponen UI modular
         self.ui_components = DashboardUIComponents(self)
         self.graph_components = DashboardGraphComponents(self)
         self.event_handlers = DashboardEventHandlers(self)
         self.config_panel = DashboardConfigPanel(self)
         
-        # controller untuk data real-time
+        # Controller untuk data real-time
         self.controller = KartelController()
         self.setup_controller_connections()
         
-        # UI
+        # Antarmuka Pengguna
         self.load_custom_fonts()
         self.init_ui()
         
-        # Untuk sinkronisasi awal setelah profile diterapkan
+        # Untuk sinkronisasi awal setelah profil diterapkan
         self.sync_initial_card_targets()
         QTimer.singleShot(500, self.force_sync_current_profile)
         
         self.update_display_from_real_data()
         
-        # Setup timer untuk periodic refresh display (TANPA simulasi)
+        # Siapkan timer untuk refresh display periodik
         self.data_refresh_timer = QTimer()
         self.data_refresh_timer.timeout.connect(self.refresh_display_data)
         self.data_refresh_timer.start(2000)  # Refresh display setiap 2 detik
@@ -62,14 +62,14 @@ class KartelDashboard(QWidget):
         print("📡 KARTEL Dashboard siap - Silakan connect manual untuk menerima data sensor")
     
     def setup_controller_connections(self):
-        """Connect controller signals to GUI update methods"""
+        """Hubungkan sinyal controller ke metode update GUI"""
         self.controller.data_updated.connect(self.update_sensor_display)
         self.controller.data_updated.connect(self.update_graph_data)
         self.controller.status_updated.connect(self.update_device_status_display)
         self.controller.connection_updated.connect(self.update_connection_display)
     
     def load_custom_fonts(self):
-        """Load font Manrope dari berbagai sumber"""
+        """Muat font Manrope dari berbagai sumber"""
         test_font = QFont("Manrope", 12)
         if test_font.exactMatch():
             print("✅ Font Manrope ditemukan di sistem!")
@@ -93,7 +93,7 @@ class KartelDashboard(QWidget):
         return font_loaded
     
     def init_ui(self):
-        """Initialize user interface"""
+        """Inisialisasi antarmuka pengguna"""
         # Pengaturan Jendela Utama
         self.setWindowTitle("KARTEL Dashboard")
         self.setGeometry(100, 100, 1400, 900)
@@ -118,7 +118,7 @@ class KartelDashboard(QWidget):
         self.set_stylesheet()
     
     def create_left_column(self):
-        """Create left monitoring column"""
+        """Buat kolom monitoring kiri"""
         left_scroll_area = QScrollArea()
         left_scroll_area.setWidgetResizable(True)
         left_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -141,119 +141,115 @@ class KartelDashboard(QWidget):
         
         # 4. Grafik Tren (beri space lebih besar)
         graph_panel = self.graph_components.create_graph_panel()
-        left_layout.addWidget(graph_panel, 1)  # Stretch factor 1 untuk expand
+        left_layout.addWidget(graph_panel, 1)  # Faktor stretch 1 untuk expand
         
         # Kurangi stretch di bawah agar grafik dapat space lebih
         left_layout.addStretch(0)
         
-        # Set scroll area widget
+        # Atur widget scroll area
         left_scroll_area.setWidget(left_column)
         return left_scroll_area
     
-    # === SIMULATION AND SYNC METHODS ===
+    # === METODE SIMULASI DAN SINKRONISASI ===
     
     def force_sync_current_profile(self):
-        """Force sync with currently selected profile"""
+        """Paksa sinkronisasi dengan profil yang sedang dipilih"""
         try:
             if hasattr(self, 'profil_combo'):
                 current_profile_name = self.profil_combo.currentText()
                 if current_profile_name and current_profile_name != "Custom (Manual)":
-                    # Force sync quietly
+                    # Paksa sinkronisasi secara diam-diam
                     self.event_handlers.on_profile_changed(current_profile_name)
         except Exception as e:
             print(f"⚠ Error in force sync: {e}")
     
     def update_display_from_real_data(self):
-        """Update display dengan data real dari sensor MQTT"""
+        """Perbarui display dengan data real dari sensor MQTT"""
         # Ambil data real dari data manager
         current_readings = self.controller.data_manager.get_current_readings()
         target_values = self.controller.data_manager.get_target_values()
         
-        # Update vital cards dengan data real
+        # Perbarui vital cards dengan data real
         if hasattr(self, 'temp_current_label') and hasattr(self, 'humidity_current_label'):
             self.temp_current_label.setText(f"{current_readings['temperature']:.1f}°C")
             self.humidity_current_label.setText(f"{current_readings['humidity']:.1f}%")
         
-        # Update target displays (only temperature)
+        # Perbarui tampilan target
         if hasattr(self, 'temp_target_label'):
             self.temp_target_label.setText(f"Target: {target_values['temperature']:.1f}°C")
-        # No humidity target label to update
+        # Tidak ada label target kelembaban untuk diperbarui
         
         # Update graph dengan data yang sama
         if len(self.graph_data["temperature"]) == 0:
-            # Jika graph kosong, tambahkan data point pertama
+            # Jika grafik kosong, tambahkan data point pertama
             self.update_graph_with_real_data(current_readings['temperature'], current_readings['humidity'])
-        
-        # Tidak auto connect - user harus manual connect
     
     def refresh_display_data(self):
-        """Refresh display data dari MQTT real-time - TANPA simulasi"""
-        # Check status koneksi MQTT
+        """Refresh data tampilan dari MQTT real-time - TANPA simulasi"""
+        # Periksa status koneksi MQTT
         self.check_mqtt_connection_status()
         
-        # Update display dengan data terbaru dari data manager (yang diterima via MQTT)
+        # Perbarui display dengan data terbaru dari data manager (yang diterima via MQTT)
         current_readings = self.controller.data_manager.get_current_readings()
         
         if hasattr(self, 'temp_current_label') and hasattr(self, 'humidity_current_label'):
-            # Update vital cards dengan data real dari ESP32
+            # Perbarui vital cards dengan data real dari ESP32
             self.temp_current_label.setText(f"{current_readings['temperature']:.1f}°C")
             self.humidity_current_label.setText(f"{current_readings['humidity']:.1f}%")
             
             # Log hanya saat ada data real dari ESP32
             if current_readings['temperature'] != 0.0 or current_readings['humidity'] != 0.0:
-                # Update graph dengan data real
+                # Perbarui grafik dengan data real
                 self.update_graph_with_real_data(current_readings['temperature'], current_readings['humidity'])
-            # Skip logging untuk data kosong agar tidak spam terminal
+            # Lewati logging untuk data kosong agar tidak spam terminal
     
     def check_mqtt_connection_status(self):
-        """Check status koneksi MQTT (minimal logging)"""
+        """Periksa status koneksi MQTT (minimal logging)"""
         if hasattr(self.controller.data_manager, 'is_connected'):
             if not self.controller.data_manager.is_connected:
                 # Mencegah auto reconnect jika user memutus koneksi secara manual
                 if hasattr(self.controller.data_manager, 'user_disconnected') and self.controller.data_manager.user_disconnected:
-                    pass  # Skip logging untuk user disconnect
+                    pass  # Lewati logging untuk user disconnectct
                 # Mencegah auto connect jika user belum pernah connect manual
                 elif hasattr(self.controller.data_manager, 'manual_connect_required') and self.controller.data_manager.manual_connect_required:
-                    pass  # Skip logging untuk waiting manual connect
+                    pass  # Lewati logging untuk waiting manual connect
                 else:
                     self.controller.data_manager.connect()
     
     def sync_initial_card_targets(self):
-        """Sync card vital targets with current profile on startup"""
+        """Sinkronkan target card vital dengan profil saat ini saat startup"""
         try:
-            # Get current target values after profile application
+            # Dapatkan nilai target saat ini setelah penerapan profil
             target_data = self.controller.data_manager.get_target_values()
             
-            # Update card vital targets
+            # Perbarui target card vital
             if hasattr(self, 'temp_target_label') and hasattr(self, 'humidity_target_label'):
                 self.update_vital_card_targets(
                     target_data["temperature"], 
                     target_data["humidity"]
                 )
-                # Targets synced quietly
+                # Target disinkronkan secara diam-diam
         except Exception as e:
             print(f"⚠ Failed to sync initial card targets: {e}")
     
-    # === UPDATE METHODS ===
+    # === METODE UPDATE ===
     
     def update_vital_card_targets(self, temperature, humidity):
-        """Update target values in vital cards (only temperature has target display)"""
+        """Perbarui nilai target di card vital (hanya suhu yang memiliki tampilan target)"""
         self.temp_target_label.setText(f"Target: {temperature}°C")
-        # No humidity target label to update since it's been removed
+        # Tidak ada label target kelembaban untuk diperbarui karena telah dihapustelah dihapus
         
-        # Update graph menggunakan data real dari sensor
         current_readings = self.controller.data_manager.get_current_readings()
         self.update_graph_with_real_data(current_readings['temperature'], current_readings['humidity'])
         
-        # Optional: Add visual feedback for updates
         self.add_target_update_animation()
     
     def add_target_update_animation(self):
-        """Add subtle visual feedback when targets are updated"""
+        """Tambahkan feedback visual halus ketika target diperbarui"""
         # Temporarily change the target box style to indicate update
         original_style = self.temp_target_label.styleSheet()
         
-        # Add brief highlight effect
+        # Tambahkan efek highlight singkat
         highlight_style = """
             QLabel {
                 background-color: rgba(79, 70, 229, 0.1);
@@ -264,15 +260,15 @@ class KartelDashboard(QWidget):
         """
         
         self.temp_target_label.setStyleSheet(highlight_style)
-        # No humidity target label since it's been removed
+        # Tidak ada label target kelembaban karena telah dihapusihapus
         
-        # Reset after short delay
+        # Reset setelah delay singkat
         QTimer.singleShot(500, lambda: (
             self.temp_target_label.setStyleSheet(original_style)
         ))
     
     def update_graph_with_real_data(self, temperature, humidity):
-        """Update graph dengan data real dari sensor MQTT"""
+        """Perbarui grafik dengan data real dari sensor MQTT"""
         current_time = time.time()
         
         # Tambah data point baru dengan nilai real dari sensor
@@ -287,35 +283,33 @@ class KartelDashboard(QWidget):
             self.graph_data["temperature"] = self.graph_data["temperature"][-max_points:]
             self.graph_data["humidity"] = self.graph_data["humidity"][-max_points:]
         
-        # Update plot graph segera
+        # Perbarui plot grafik segera
         self.graph_components.update_graph_plot()
         
-        # Graph updated quietly
+        # Grafik diperbarui secara diam-diamara diam-diam
     
-    # === DYNAMIC UPDATE SLOTS ===
+    # === SLOT UPDATE DINAMIS ===
     
     @pyqtSlot(dict)
     def update_sensor_display(self, data):
-        """Update sensor display dengan data real dari MQTT sensor"""
+        """Perbarui tampilan sensor dengan data real dari sensor MQTT"""
         current = data["current"]
         target = data["target"]
         
-        # Update nilai current di vital cards dengan data real
+        # Perbarui nilai current di vital cards dengan data real
         self.temp_current_label.setText(f"{current['temperature']:.1f}°C")
         self.humidity_current_label.setText(f"{current['humidity']:.1f}%")
         
-        # Update targets (only temperature has target display)
+        # Perbarui target (hanya suhu yang memiliki tampilan target)
         self.temp_target_label.setText(f"Target: {target['temperature']:.1f}°C")
-        # No humidity target label to update
+        # Tidak ada label target kelembaban untuk diperbaruiuntuk diperbarui
         
-        # Update graph dengan data real dari sensor
+        # Perbarui grafik dengan data real dari sensor
         self.update_graph_with_real_data(current['temperature'], current['humidity'])
         
-        # Sensor data processed quietly
-    
     @pyqtSlot(dict)
     def update_graph_data(self, data):
-        """Update graph dengan data real-time dari sensor MQTT"""
+        """Perbarui grafik dengan data real-time dari sensor MQTT"""
         current = data["current"]
         current_time = time.time()
         
@@ -331,15 +325,15 @@ class KartelDashboard(QWidget):
             self.graph_data["temperature"] = self.graph_data["temperature"][-max_points:]
             self.graph_data["humidity"] = self.graph_data["humidity"][-max_points:]
         
-        # Update plot graph dengan data real
+        # Perbarui plot grafik dengan data real
         self.graph_components.update_graph_plot()
         
-        # Graph updated with real sensor data
+        # Grafik diperbarui dengan data sensor real
 
     @pyqtSlot(dict)
     def update_device_status_display(self, status):
-        """Update device status display with real-time data"""
-        # Update power status based on MQTT power data
+        """Perbarui tampilan status perangkat dengan data real-time"""
+        # Perbarui status daya berdasarkan data MQTT power
         if "power" in status:
             power_value = status["power"]["value"]
             power_status = status["power"]["status"]
@@ -348,16 +342,16 @@ class KartelDashboard(QWidget):
                 self.power_status_label.setObjectName("statusAktif")
             else:
                 self.power_status_label.setObjectName("statusNonAktif")
-            # Refresh style
+            # Segarkan style
             self.power_status_label.style().unpolish(self.power_status_label)
             self.power_status_label.style().polish(self.power_status_label)
         
-        # Update motor with countdown display
+        # Perbarui motor dengan tampilan countdown
         if "motor" in status:
             motor_status = status["motor"]["status"]
             rotation_time = status["motor"].get("rotation_time", 0)
             
-            # Add rotation countdown to status text when rotating
+            # Tambahkan countdown rotasi ke teks status saat berputar
             if motor_status == "Berputar" and rotation_time > 0:
                 display_text = f"{motor_status} ({rotation_time}s)"
             else:
@@ -365,7 +359,7 @@ class KartelDashboard(QWidget):
                 
             self.motor_status_label.setText(display_text)
             
-            # Set object names for motor states
+            # Atur nama objek untuk status motor
             if motor_status == "Berputar":
                 self.motor_status_label.setObjectName("statusMotorBerputar")
             elif motor_status == "Error":
@@ -373,17 +367,17 @@ class KartelDashboard(QWidget):
             else:  # "Idle"
                 self.motor_status_label.setObjectName("statusMotorIdle")
         
-        # Update timer with real countdown (3:00:00 format)
+        # Perbarui timer dengan countdown real (format 3:00:00)
         if "timer" in status:
             countdown = status["timer"]["countdown"]
             self.timer_status_label.setText(countdown)
         
-        # Reapply stylesheet to update colors
+        # Terapkan ulang stylesheet untuk memperbarui warna
         self.set_stylesheet()
 
     @pyqtSlot(dict)
     def update_connection_display(self, connection):
-        """Update connection status display"""
+        """Perbarui tampilan status koneksi"""
         if connection["connected"]:
             self.status_connect_btn.setText(" Terhubung")
             self.status_connect_btn.setObjectName("statusConnected")
@@ -397,7 +391,7 @@ class KartelDashboard(QWidget):
         
         self.status_day_btn.setText(f" {connection['day_text']}")
         
-        # Reapply stylesheet
+        # Terapkan ulang stylesheet
         self.set_stylesheet()
     
     # === STYLESHEET ===
@@ -412,7 +406,7 @@ class KartelDashboard(QWidget):
         self.setStyleSheet(stylesheet)
 
     def load_stylesheet(self, file_path="styles.qss"):
-        """Memuat stylesheet dari file QSS eksternal"""
+        """Muat stylesheet dari file QSS eksternal"""
         try:
             possible_paths = [
                 file_path,

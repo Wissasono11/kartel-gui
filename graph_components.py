@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-KARTEL Dashboard - Graph Components
-Contains graph setup and management methods
+KARTEL Dashboard - Komponen Grafik
+Berisi metode pengaturan dan manajemen grafik
 
-Author: KARTEL Team
-Created: November 28, 2025
+Penulis: Tim KARTEL
+Dibuat: 28 November 2025
 """
 
 import os
@@ -18,13 +18,13 @@ from PyQt6.QtCore import QSize, Qt
 
 
 class DashboardGraphComponents:
-    """Contains graph-related functionality"""
+    """Berisi fungsi yang terkait dengan grafik"""
     
     def __init__(self, parent):
         self.parent = parent
     
     def create_graph_panel(self):
-        """Create graph panel widget"""
+        """Buat widget panel grafik"""
         graph_widget_container = QFrame()
         graph_widget_container.setObjectName("graphCard")
         graph_widget_container.setMinimumHeight(380)
@@ -46,7 +46,7 @@ class DashboardGraphComponents:
         title_layout.addStretch()
         graph_main_layout.addLayout(title_layout)
         
-        # Plot Widget
+        # Widget Plot
         self.parent.plot_widget = pg.PlotWidget()
         self.parent.plot_widget.setBackground('#ffffff')
         self.parent.plot_widget.setMenuEnabled(False)
@@ -57,18 +57,18 @@ class DashboardGraphComponents:
             QSizePolicy.Policy.Expanding
         )
 
-        # Initialize dengan data historis real yang ada
+        # Inisialisasi dengan data historis real yang ada
         hist_data = self.parent.controller.get_historical_data()
         self.initialize_graph_with_real_data(hist_data)
         
-        # Setup plot
+        # Pengaturan plot
         self.setup_graph_plot()
 
         graph_main_layout.addWidget(self.parent.plot_widget)
         return graph_widget_container
     
     def initialize_graph_with_real_data(self, hist_data):
-        """Initialize graph dengan data historis real dari sensor"""
+        """Inisialisasi grafik dengan data historis real dari sensor"""
         # Jika tidak ada data historis, mulai dengan data kosong
         if not hist_data["temperature"] or not hist_data["humidity"]:
             return
@@ -89,7 +89,7 @@ class DashboardGraphComponents:
         else:
             # Fallback: buat timestamp mundur dari waktu sekarang
             for i, (temp, humidity) in enumerate(zip(hist_data["temperature"], hist_data["humidity"])):
-                timestamp = current_time - (len(hist_data["temperature"]) - i - 1) * 300  # 5 menit interval
+                timestamp = current_time - (len(hist_data["temperature"]) - i - 1) * 300  # Interval 5 menit
                 self.parent.graph_data["timestamps"].append(timestamp)
                 self.parent.graph_data["temperature"].append(temp)
                 self.parent.graph_data["humidity"].append(humidity)
@@ -97,22 +97,22 @@ class DashboardGraphComponents:
         print(f"📊 Graph diinisialisasi dengan {len(hist_data['temperature'])} data point historis real")
     
     def setup_graph_plot(self):
-        """Setup the graph plotting elements"""
-        # Setup axes ranges berdasarkan rentang yang diizinkan
-        self.parent.plot_widget.setYRange(20, 50)  # Temperature range: 20-50°C
+        """Pengaturan elemen plotting grafik"""
+        # Pengaturan rentang sumbu berdasarkan rentang yang diizinkan
+        self.parent.plot_widget.setYRange(20, 50)  # Rentang Suhu: 20-50°C
         
-        # Add some margin for bottom axis labels
-        self.parent.plot_widget.plotItem.setContentsMargins(10, 10, 10, 25)  # Extra bottom margin
+        # Tambahkan margin untuk label sumbu bawah
+        self.parent.plot_widget.plotItem.setContentsMargins(10, 10, 10, 25)  # Margin bawah ekstra
         
-        # Setup X axis (time labels)
+        # Pengaturan sumbu X (label waktu)
         self.update_x_axis()
 
-        # Setup Y axis left (Temperature)
+        # Pengaturan sumbu Y kiri (Suhu)
         ax_left = self.parent.plot_widget.getAxis('left')
         ax_left.setLabel("Suhu (°C)", color="#FFC107")
         ax_left.setTextPen(QColor("#FFC107"))
 
-        # Create temperature plot line
+        # Buat garis plot suhu
         self.parent.temp_plot = self.parent.plot_widget.plot(
             [], [], 
             pen=pg.mkPen(color="#FFC107", width=3),
@@ -120,12 +120,12 @@ class DashboardGraphComponents:
             name="Suhu"
         )
 
-        # Create second ViewBox for humidity dengan range yang sesuai
+        # Buat ViewBox kedua untuk kelembaban dengan rentang yang sesuai
         self.parent.view_box_2 = pg.ViewBox()
         self.parent.plot_widget.plotItem.scene().addItem(self.parent.view_box_2)
-        self.parent.view_box_2.setYRange(60, 80)  # Humidity range: 60-80%
+        self.parent.view_box_2.setYRange(60, 80) 
 
-        # Setup Y axis right (Humidity)
+        # Pengaturan sumbu Y kanan (Kelembaban)
         ax_right = pg.AxisItem('right')
         ax_right.setLabel("Kelembaban (%)", color="#5A3FFF")
         ax_right.setTextPen(QColor("#5A3FFF"))
@@ -134,7 +134,7 @@ class DashboardGraphComponents:
         self.parent.plot_widget.plotItem.layout.addItem(ax_right, 2, 3)
         self.parent.view_box_2.linkView(pg.ViewBox.XAxis, self.parent.plot_widget.plotItem.getViewBox())
 
-        # Create humidity plot elements
+        # Buat elemen plot kelembaban
         self.parent.humidity_plot = pg.PlotCurveItem(
             [], [],
             pen=pg.mkPen(color="#5A3FFF", width=3),
@@ -146,21 +146,21 @@ class DashboardGraphComponents:
         self.parent.view_box_2.addItem(self.parent.humidity_plot)
         self.parent.view_box_2.addItem(self.parent.humidity_symbol)
 
-        # Setup tooltip
+        # Pengaturan tooltip
         self.setup_graph_tooltip()
         
-        # Update view when resized
+        # Perbarui tampilan ketika diubah ukurannya
         def update_views():
             self.parent.view_box_2.setGeometry(self.parent.plot_widget.plotItem.vb.sceneBoundingRect())
         
         self.parent.plot_widget.plotItem.vb.sigResized.connect(update_views)
         
-        # Initial plot
+        # Plot awal
         self.update_graph_plot()
         update_views()
     
     def setup_graph_tooltip(self):
-        """Setup interactive tooltip for graph"""
+        """Pengaturan tooltip interaktif untuk grafik"""
         self.parent.tooltip = QLabel(self.parent.plot_widget)
         self.parent.tooltip.setStyleSheet("""
             QLabel {
@@ -175,7 +175,7 @@ class DashboardGraphComponents:
         """)
         self.parent.tooltip.hide()
 
-        # Mouse move event for tooltip
+        # Event gerakan mouse untuk tooltip
         def on_mouse_move(event):
             if self.parent.plot_widget.sceneBoundingRect().contains(event):
                 mouse_pos = self.parent.plot_widget.plotItem.vb.mapSceneToView(event)
@@ -194,7 +194,7 @@ class DashboardGraphComponents:
                     self.parent.tooltip.setText(tooltip_text)
                     self.parent.tooltip.adjustSize()
                     
-                    # Position tooltip
+                    # Posisi tooltip
                     try:
                         tooltip_pos = self.parent.plot_widget.mapFromScene(event)
                         self.parent.tooltip.move(tooltip_pos.x() + 10, tooltip_pos.y() - 60)
@@ -209,11 +209,11 @@ class DashboardGraphComponents:
         self.parent.plot_widget.scene().sigMouseMoved.connect(on_mouse_move)
     
     def update_x_axis(self):
-        """Update X axis with time labels"""
+        """Perbarui sumbu X dengan label waktu"""
         if not self.parent.graph_data["timestamps"]:
             return
             
-        # Create time labels
+        # Buat label waktu
         time_labels = []
         x_positions = []
         
@@ -222,33 +222,33 @@ class DashboardGraphComponents:
             time_labels.append(time_str)
             x_positions.append(i)
         
-        # Update X axis ticks
+        # Perbarui ticks sumbu X
         x_ticks = [list(zip(x_positions, time_labels))]
         ax_bottom = self.parent.plot_widget.getAxis('bottom')
         ax_bottom.setTicks(x_ticks)
         ax_bottom.setTextPen(QColor("#6b7280"))
         
-        # Set X range
+        # Atur rentang X
         if len(x_positions) > 1:
             self.parent.plot_widget.setXRange(-0.5, len(x_positions) - 0.5)
     
     def update_graph_plot(self):
-        """Update the graph with current data"""
+        """Perbarui grafik dengan data saat ini"""
         if not self.parent.graph_data["temperature"]:
             return
             
-        # Create x-axis positions
+        # Buat posisi sumbu x
         x_data = list(range(len(self.parent.graph_data["temperature"])))
         
-        # Update temperature plot
+        # Perbarui plot suhu
         self.parent.temp_plot.setData(x_data, self.parent.graph_data["temperature"])
         
-        # Update humidity plot
+        # Perbarui plot kelembaban
         self.parent.humidity_plot.setData(x_data, self.parent.graph_data["humidity"])
         self.parent.humidity_symbol.setData(x_data, self.parent.graph_data["humidity"])
         
-        # Update X axis
+        # Perbarui sumbu X
         self.update_x_axis()
         
-        # Update humidity ViewBox range
+        # Perbarui rentang ViewBox kelembaban
         self.parent.view_box_2.setXRange(-0.5, len(x_data) - 0.5)

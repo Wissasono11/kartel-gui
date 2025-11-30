@@ -198,7 +198,7 @@ class DashboardUIComponents:
         title_layout.addStretch()
         status_main_layout.addLayout(title_layout)
 
-        # 4 Kartu Status
+        # 3 Kartu Status
         status_cards_widget = QWidget()
         status_cards_layout = QHBoxLayout(status_cards_widget)
         status_cards_layout.setContentsMargins(0, 0, 0, 0)
