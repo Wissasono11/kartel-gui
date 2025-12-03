@@ -39,6 +39,8 @@ class KartelRealDataManager(QObject):
         
         # Pengaturan perangkat dan status
         self.device_settings = DEFAULT_SETTINGS.copy()
+        self.target_temperature = DEFAULT_SETTINGS["target_temperature"]  # Target terpisah yang tidak ter-override MQTT
+        self.current_data["SET"] = self.target_temperature  # Sync SET dengan target
         self.is_connected = False  
         self.connection_attempts = 0
         self.last_data_time = 0
@@ -184,8 +186,8 @@ class KartelRealDataManager(QObject):
             old_power = self.current_data.get("power", 0)
             old_rotate = self.current_data.get("rotate_on", 0)
             
-            # Proses setiap field yang diharapkan
-            for key in ["temperature", "humidity", "power", "rotate_on", "SET", "humidifier_power"]:
+            # Proses setiap field yang diharapkan (kecuali SET yang bisa override target kita)
+            for key in ["temperature", "humidity", "power", "rotate_on", "humidifier_power"]:
                 if key in data:
                     value = data[key]
                     # Konversi ke float jika berupa angka
@@ -195,6 +197,19 @@ class KartelRealDataManager(QObject):
                     elif isinstance(value, str) and value.replace('.', '').replace('-', '').isdigit():
                         self.current_data[key] = float(value)
                         updated = True
+            
+            # Proses SET secara terpisah - hanya update jika ada nilai valid dan berbeda
+            if "SET" in data and data["SET"] != 0:
+                try:
+                    set_value = float(data["SET"])
+                    if set_value > 0 and set_value != self.target_temperature:
+                        # Hanya update target jika nilai SET dari ESP32 valid dan berbeda
+                        print(f"📡 Received SET command from ESP32: {set_value}°C")
+                        self.current_data["SET"] = set_value
+                        self.target_temperature = set_value
+                        updated = True
+                except (ValueError, TypeError):
+                    pass  # Ignore invalid SET values
             
             if updated:
                 # Perbarui waktu data terakhir
@@ -321,6 +336,7 @@ class KartelRealDataManager(QObject):
         command = {"SET": str(temperature)}
         success = self.send_command(command)
         if success:
+            self.target_temperature = temperature  # Simpan target terpisah
             self.device_settings["target_temperature"] = temperature
             print(f"🎯 Target Temperature: {temperature}°C (Set via MQTT)")
         return success
@@ -368,13 +384,15 @@ class KartelRealDataManager(QObject):
     def get_target_values(self) -> Dict[str, float]:
         """Dapatkan nilai target setpoint"""
         return {
-            "temperature": self.current_data["SET"],
+            "temperature": self.target_temperature,  # Gunakan target terpisah, bukan dari MQTT SET
             "humidity": self.device_settings["target_humidity"]
         }
     
     def set_target_values(self, temperature: float = None, humidity: float = None):
         """Atur nilai target baru"""
         if temperature is not None:
+            self.target_temperature = temperature  # Set target terpisah
+            self.current_data["SET"] = temperature  # Sync dengan current_data
             self.set_target_temperature(temperature)
         if humidity is not None:
             self.device_settings["target_humidity"] = max(60.0, min(80.0, humidity))
@@ -485,6 +503,7 @@ class KartelRealDataManager(QObject):
                 self.device_settings["target_humidity"] = 60.0
                 
                 if temp_success:
+                    self.target_temperature = profile["temperature"]  # Set target terpisah juga
                     self.device_settings["total_days"] = profile["duration"]
                     # Simpan data penetasan yang diperbarui ketika profil berubah
                     if self.incubation_start_date:

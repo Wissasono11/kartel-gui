@@ -62,6 +62,9 @@ class KartelController(QObject):
     
     def on_real_data_received(self, data):
         """Tangani data real yang diterima dari ESP32 melalui MQTT"""
+        # Ambil target values yang benar dari data manager (bukan dari MQTT SET)
+        target_values = self.data_manager.get_target_values()
+        
         # Konversi ke format yang diharapkan GUI
         data_packet = {
             "current": {
@@ -69,8 +72,8 @@ class KartelController(QObject):
                 "humidity": data.get("humidity", 0.0)
             },
             "target": {
-                "temperature": data.get("SET", 38.0),
-                "humidity": 60.0  # Default
+                "temperature": target_values["temperature"],  # Gunakan target yang tersimpan
+                "humidity": target_values["humidity"]
             },
             "extra": {
                 "power": data.get("power", 0),
@@ -104,6 +107,21 @@ class KartelController(QObject):
         success = self.data_manager.set_target_temperature(temperature)
         if success:
             print(f"✅ Target temperature set to {temperature}°C")
+            
+            # Emit update ke GUI dengan target yang baru
+            current_readings = self.data_manager.get_current_readings()
+            target_values = self.data_manager.get_target_values()
+            
+            data_packet = {
+                "current": current_readings,
+                "target": target_values,
+                "extra": {
+                    "power": self.data_manager.current_data.get("power", 0),
+                    "rotate_on": self.data_manager.current_data.get("rotate_on", 0)
+                }
+            }
+            self.data_updated.emit(data_packet)
+            
         return success
     
     def set_target_humidity(self, humidity: float):
@@ -123,7 +141,23 @@ class KartelController(QObject):
     
     def apply_profile(self, profile_name: str):
         """Terapkan profil penetasan"""
-        return self.data_manager.apply_profile(profile_name)
+        success = self.data_manager.apply_profile(profile_name)
+        if success:
+            # Emit update ke GUI dengan target yang baru dari profil
+            current_readings = self.data_manager.get_current_readings()
+            target_values = self.data_manager.get_target_values()
+            
+            data_packet = {
+                "current": current_readings,
+                "target": target_values,
+                "extra": {
+                    "power": self.data_manager.current_data.get("power", 0),
+                    "rotate_on": self.data_manager.current_data.get("rotate_on", 0)
+                }
+            }
+            self.data_updated.emit(data_packet)
+            
+        return success
     
     def get_incubation_profiles(self):
         """Dapatkan profil yang tersedia"""

@@ -29,14 +29,10 @@ class DashboardEventHandlers:
         if success:
             # perbarui input form dari profil yang dipilih
             self.parent.suhu_input.setText(str(selected_profile["temperature"]))
-            # Field input kelembaban telah dihapus dihapus
+            # Field input kelembaban telah dihapus
             
-            # Perbarui target kartu vital segera dengan nilai profil (gunakan kelembaban default)lt)
-            default_humidity = 60.0  # Kelembaban default untuk semua profil
-            self.parent.update_vital_card_targets(
-                selected_profile["temperature"], 
-                default_humidity
-            )
+            # Target card akan diupdate otomatis melalui apply_profile dan controller emit
+            # Tidak perlu manual update_vital_card_targets lagi
             
             # Gunakan QTimer untuk memastikan pesan muncul di atas setelah UI diperbarui
             QTimer.singleShot(100, lambda: self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!\nTarget Suhu: {selected_profile['temperature']}°C"))
@@ -53,9 +49,8 @@ class DashboardEventHandlers:
                 
             self.parent.controller.set_target_temperature(temp)
             
-            # Perbarui target kartu vital 
-            default_humidity = 60.0  # Nilai kelembaban default
-            self.parent.update_vital_card_targets(temp, default_humidity)
+            # Target card akan diupdate otomatis melalui controller emit
+            # Tidak perlu manual update_vital_card_targets lagi
             
             self.show_message("Sukses", "Pengaturan suhu berhasil diterapkan!")
         except ValueError:
