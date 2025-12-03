@@ -339,7 +339,7 @@ class KartelRealDataManager(QObject):
             self.error_occurred.emit(error_msg)
             return False
         
-        command = {"SET": str(temperature)}
+        command = {"SET": temperature}
         success = self.send_command(command)
         if success:
             old_target = self.target_temperature
