@@ -76,6 +76,12 @@ class KartelRealDataManager(QObject):
         self.motor_timer.timeout.connect(self.update_motor_realtime)
         self.motor_timer.start(1000)  # Perbarui setiap detik untuk countdown real-time
         
+        # Variabel untuk tracking motor rotation timer
+        self.motor_start_time = None  # Waktu mulai motor berputar
+        self.motor_duration = 180  # Durasi motor berputar dalam detik (3 menit)
+        self.motor_remaining_time = 0  # Sisa waktu motor berputar
+        self.last_motor_state = False  # Status motor sebelumnya untuk deteksi perubahan
+        
         # Inisialisasi klien MQTT (TANPA auto connect - user harus manual connect)
         if MQTT_AVAILABLE:
             self.setup_mqtt_connection()
@@ -186,7 +192,7 @@ class KartelRealDataManager(QObject):
             old_power = self.current_data.get("power", 0)
             old_rotate = self.current_data.get("rotate_on", 0)
             
-            # Proses setiap field yang diharapkan (kecuali SET yang bisa override target kita)
+            # Proses setiap field yang diharapkan (kecuali SET yang hanya diatur dari input field panel)
             for key in ["temperature", "humidity", "power", "rotate_on", "humidifier_power"]:
                 if key in data:
                     value = data[key]
@@ -198,18 +204,8 @@ class KartelRealDataManager(QObject):
                         self.current_data[key] = float(value)
                         updated = True
             
-            # Proses SET secara terpisah - hanya update jika ada nilai valid dan berbeda
-            if "SET" in data and data["SET"] != 0:
-                try:
-                    set_value = float(data["SET"])
-                    if set_value > 0 and set_value != self.target_temperature:
-                        # Hanya update target jika nilai SET dari ESP32 valid dan berbeda
-                        print(f"📡 Received SET command from ESP32: {set_value}°C")
-                        self.current_data["SET"] = set_value
-                        self.target_temperature = set_value
-                        updated = True
-                except (ValueError, TypeError):
-                    pass  # Ignore invalid SET values
+            # SET tidak diproses dari MQTT - hanya dari input field panel pengaturan
+            # Target temperature tetap menggunakan nilai yang diatur user melalui GUI
             
             if updated:
                 # Perbarui waktu data terakhir
@@ -237,8 +233,14 @@ class KartelRealDataManager(QObject):
                 # Log perubahan status rotasi motor dari ESP32
                 rotate_changed = self.current_data.get("rotate_on", 0) != old_rotate
                 if rotate_changed:
-                    motor_status = "Berputar" if self.current_data["rotate_on"] == 1 else "Idle"
+                    rotation_value = self.current_data.get("rotate_on", 0)
+                    motor_status = "Berputar" if rotation_value != 0 else "Idle"
                     print(f"🔄 Motor Status: {motor_status} (dari ESP32)")
+                    print(f"🔄 Rotation Status: rotate_on={rotation_value} -> Motor {motor_status}")
+                    if rotation_value != 0:
+                        print(f"🔄 Rotation Active: Motor pembalik telur sedang berputar")
+                    else:
+                        print(f"🔄 Rotation Idle: Motor pembalik telur berhenti")
                 
                 # Hanya log status data sesekali untuk menghindari spam
                 if temp_changed or humidity_changed or power_changed or rotate_changed:
@@ -248,8 +250,12 @@ class KartelRealDataManager(QObject):
                 # Emit sinyal untuk update GUI real-time
                 self.data_received.emit(self.current_data.copy())
                 
-                # Log data penting dari ESP32
-                print(f"📡 ESP32 Data: T={self.current_data['temperature']:.1f}°C, H={self.current_data['humidity']:.1f}%, Power={self.current_data['power']}%")
+                # Log data penting dari ESP32 (tanpa SET karena SET hanya dari input field panel)
+                rotate_value = self.current_data.get('rotate_on', 0)
+                rotate_status = "ON" if rotate_value != 0 else "OFF"
+                # Tampilkan SET dari input field panel (target_temperature), bukan dari MQTT
+                current_target = self.target_temperature  # Nilai dari input field panel
+                print(f"📡 ESP32 Data: T={self.current_data['temperature']:.1f}°C, H={self.current_data['humidity']:.1f}%, Power={self.current_data['power']}%, Rotate={rotate_status}, SET={current_target:.1f}°C (Input Field Value)")
         
         except Exception as e:
             error_msg = f"Error memproses data sensor: {str(e)}"
@@ -336,9 +342,12 @@ class KartelRealDataManager(QObject):
         command = {"SET": str(temperature)}
         success = self.send_command(command)
         if success:
+            old_target = self.target_temperature
             self.target_temperature = temperature  # Simpan target terpisah
+            self.current_data["SET"] = temperature  # Update SET di current_data
             self.device_settings["target_temperature"] = temperature
-            print(f"🎯 Target Temperature: {temperature}°C (Set via MQTT)")
+            print(f"🎯 SET Status: Target temperature diatur dari panel pengaturan: {old_target}°C -> {temperature}°C")
+            print(f"🎯 Target Temperature: {temperature}°C (Set via Panel Input)")
         return success
     
     def set_buzzer(self, state: str) -> bool:
@@ -370,10 +379,6 @@ class KartelRealDataManager(QObject):
             self.device_settings["relay_interval"] = interval
         return success
     
-
-    
-    # ========== Metode Interface untuk Controller ==========
-    
     def get_current_readings(self) -> Dict[str, float]:
         """Dapatkan pembacaan sensor saat ini"""
         return {
@@ -391,15 +396,41 @@ class KartelRealDataManager(QObject):
     def set_target_values(self, temperature: float = None, humidity: float = None):
         """Atur nilai target baru"""
         if temperature is not None:
+            old_target = self.target_temperature
             self.target_temperature = temperature  # Set target terpisah
             self.current_data["SET"] = temperature  # Sync dengan current_data
+            print(f"🎯 SET Status: Target temperature diatur melalui interface: {old_target}°C -> {temperature}°C")
             self.set_target_temperature(temperature)
         if humidity is not None:
+            old_humidity = self.device_settings["target_humidity"]
             self.device_settings["target_humidity"] = max(60.0, min(80.0, humidity))
+            print(f"💧 Humidity Target: {old_humidity}% -> {self.device_settings['target_humidity']}% (Set via Panel)")
     
     def get_device_status(self) -> Dict[str, Any]:
         """Dapatkan status perangkat berdasarkan data sensor real dan perintah MQTT"""
-        # Status motor sekarang langsung dari data MQTT rotate_on
+        # Status motor berdasarkan data MQTT rotate_on - apapun nilai != 0 dianggap berputar
+        rotate_value = self.current_data.get("rotate_on", 0)
+        motor_active = rotate_value != 0  # Berputar jika tidak sama dengan 0
+        
+        # Format countdown sebagai string MM:SS
+        minutes = self.motor_remaining_time // 60
+        seconds = self.motor_remaining_time % 60
+        countdown_str = f"{minutes:02d}:{seconds:02d}"
+        
+        # Tentukan countdown berdasarkan state motor
+        if motor_active:
+            timer_countdown = countdown_str
+            timer_state = "ACTIVE"
+        else:
+            timer_countdown = "03:00"  # Default countdown saat idle
+            timer_state = "DEFAULT"
+        
+        # Log countdown state untuk debugging sinkronisasi
+        if hasattr(self, '_last_countdown_state') and self._last_countdown_state != timer_state:
+            print(f"⏰ Timer State Change: {getattr(self, '_last_countdown_state', 'UNKNOWN')} -> {timer_state}")
+            print(f"⏰ Countdown Display: {timer_countdown} ({timer_state})")
+        self._last_countdown_state = timer_state
+        
         return {
             "power": {
                 "value": self.current_data["power"],
@@ -407,12 +438,12 @@ class KartelRealDataManager(QObject):
                 "active": self.current_data["power"] > 0
             },
             "motor": {
-                "status": "Berputar" if self.current_data.get("rotate_on", 0) == 1 else "Idle",
-                "active": self.current_data.get("rotate_on", 0) == 1,
-                "rotation_time": 0  
+                "status": "Berputar" if motor_active else "Idle",
+                "active": motor_active,
+                "rotation_time": self.motor_remaining_time  
             },
             "timer": {
-                "countdown": "03:00:00"  
+                "countdown": timer_countdown
             },
             "buzzer": {
                 "status": self.device_settings.get("buzzer_state", "OFF"),
@@ -424,8 +455,45 @@ class KartelRealDataManager(QObject):
     
     def update_motor_realtime(self):
         """Perbarui status motor secara real-time menggunakan data MQTT rotate_on"""
-        # Status motor sekarang langsung dari data MQTT rotate_on
-        # Tidak perlu logika penjadwalan internal
+        # Motor berputar jika rotate_on tidak sama dengan 0 (bukan hanya == 1)
+        rotate_value = self.current_data.get("rotate_on", 0)
+        current_motor_state = rotate_value != 0
+        
+        # Deteksi jika motor baru mulai berputar
+        if current_motor_state and not self.last_motor_state:
+            # Motor baru mulai berputar - reset timer
+            self.motor_start_time = time.time()
+            self.motor_remaining_time = self.motor_duration
+            print(f"🔄 Motor mulai berputar - Timer dimulai: {self.motor_duration} detik")
+            print(f"🔄 Rotation Status Update: rotate_on={rotate_value} -> Motor Pembalik ACTIVE untuk {self.motor_duration}s")
+            
+        # Jika motor sedang berputar, hitung sisa waktu
+        elif current_motor_state and self.motor_start_time:
+            # Hitung sisa waktu berdasarkan waktu yang telah berlalu
+            elapsed_time = time.time() - self.motor_start_time
+            old_remaining = self.motor_remaining_time
+            self.motor_remaining_time = max(0, self.motor_duration - int(elapsed_time))
+            
+            # Log countdown progress setiap 10 detik atau saat perubahan signifikan
+            if old_remaining != self.motor_remaining_time and self.motor_remaining_time % 10 == 0:
+                minutes = self.motor_remaining_time // 60
+                seconds = self.motor_remaining_time % 60
+                print(f"⏰ Rotation Timer Progress: {minutes:02d}:{seconds:02d} remaining")
+            
+            # Jika waktu habis, motor seharusnya berhenti
+            if self.motor_remaining_time <= 0:
+                print(f"⏰ Timer motor habis - Motor seharusnya berhenti")
+                
+        # Jika motor berhenti, reset timer
+        elif not current_motor_state:
+            if self.last_motor_state:  # Only log when changing from active to idle
+                print(f"🔄 Rotation Status Update: rotate_on={rotate_value} -> Motor Pembalik IDLE")
+                print(f"⏰ Rotation Timer: Reset to default countdown (03:00) - Motor stopped")
+            self.motor_remaining_time = 0
+            self.motor_start_time = None
+        
+        # Simpan status motor untuk deteksi perubahan berikutnya
+        self.last_motor_state = current_motor_state
         
         # Emit pembaruan status perangkat
         device_status = self.get_device_status()

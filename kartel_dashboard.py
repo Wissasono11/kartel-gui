@@ -346,16 +346,10 @@ class KartelDashboard(QWidget):
             self.power_status_label.style().unpolish(self.power_status_label)
             self.power_status_label.style().polish(self.power_status_label)
         
-        # Perbarui motor dengan tampilan countdown
         if "motor" in status:
             motor_status = status["motor"]["status"]
-            rotation_time = status["motor"].get("rotation_time", 0)
-            
-            # Tambahkan countdown rotasi ke teks status saat berputar
-            if motor_status == "Berputar" and rotation_time > 0:
-                display_text = f"{motor_status} ({rotation_time}s)"
-            else:
-                display_text = motor_status
+            # Tidak menampilkan detik countdown pada card motor
+            display_text = motor_status
                 
             self.motor_status_label.setText(display_text)
             
