@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import signal
 import pyqtgraph as pg
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea
@@ -60,7 +61,59 @@ class KartelDashboard(QWidget):
         self.data_refresh_timer.start(2000)  # Refresh display setiap 2 detik
         
         print("📡 KARTEL Dashboard siap - Silakan connect manual untuk menerima data sensor")
+        
+        # Setup signal handler untuk Ctrl+C
+        self.setup_signal_handlers()
     
+    def setup_signal_handlers(self):
+        """Setup signal handlers untuk menangani Ctrl+C"""
+        signal.signal(signal.SIGINT, self.signal_handler)
+        
+        # Timer untuk memungkinkan signal processing di PyQt
+        self.signal_timer = QTimer()
+        self.signal_timer.timeout.connect(lambda: None)  # Dummy untuk processing signals
+        self.signal_timer.start(100)  # Check signals setiap 100ms
+    
+    def signal_handler(self, signum, frame):
+        """Handler untuk SIGINT (Ctrl+C)"""
+        print("\n🛑 Menerima sinyal shutdown (Ctrl+C)...")
+        self.shutdown_application()
+    
+    def shutdown_application(self):
+        """Shutdown aplikasi dengan cleanup yang proper"""
+        try:
+            print("🔄 Melakukan cleanup...")
+            
+            # Stop semua timer
+            if hasattr(self, 'data_refresh_timer'):
+                self.data_refresh_timer.stop()
+            if hasattr(self, 'signal_timer'):
+                self.signal_timer.stop()
+            
+            # Stop timer di controller
+            if hasattr(self.controller, 'status_timer'):
+                self.controller.status_timer.stop()
+            if hasattr(self.controller, 'device_status_timer'):
+                self.controller.device_status_timer.stop()
+                
+            # Disconnect MQTT connection dengan aman
+            if hasattr(self.controller, 'disconnect'):
+                print("📡 Memutus koneksi MQTT...")
+                self.controller.disconnect()
+            
+            # Tutup aplikasi
+            print("✅ Cleanup selesai. Menutup aplikasi...")
+            QApplication.instance().quit()
+            
+        except Exception as e:
+            print(f"⚠ Error saat cleanup: {e}")
+            QApplication.instance().quit()
+    
+    def closeEvent(self, event):
+        """Override closeEvent untuk cleanup saat window ditutup"""
+        self.shutdown_application()
+        event.accept()
+
     def setup_controller_connections(self):
         """Hubungkan sinyal controller ke metode update GUI"""
         self.controller.data_updated.connect(self.update_sensor_display)
@@ -422,10 +475,27 @@ class KartelDashboard(QWidget):
             return ""
 
 
+def setup_signal_handling():
+    """Setup global signal handling untuk aplikasi"""
+    # Enable CTRL+C handling di Windows
+    if sys.platform == "win32":
+        import os
+        os.system("")
+    
+    # Pastikan Python dapat menerima signals
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 if __name__ == "__main__":
     pg.setConfigOptions(antialias=True)
     
+    # Setup signal handling sebelum membuat aplikasi
+    setup_signal_handling()
+    
     app = QApplication(sys.argv)
+    
+    # Enable signal handling di PyQt
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     
     default_font = QFont("Manrope", 10)
     if default_font.exactMatch():
@@ -435,6 +505,15 @@ if __name__ == "__main__":
         default_font = QFont("Arial", 10)
     app.setFont(default_font)
     
+    print("💡 Tip: Gunakan Ctrl+C untuk shutdown aplikasi dengan aman")
+    
     window = KartelDashboard()
     window.show()
-    sys.exit(app.exec())
+    
+    try:
+        sys.exit(app.exec())
+    except KeyboardInterrupt:
+        print("\n🛑 Keyboard interrupt detected, shutting down...")
+        if hasattr(window, 'shutdown_application'):
+            window.shutdown_application()
+        sys.exit(0)

@@ -1,15 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-KARTEL Controller
-Menangani interaksi GUI dan terhubung dengan pengelola data real
-Menggunakan data MQTT REAL dari ESP32 melalui Teknohole
-
-Author: KARTEL Team
-Created: November 18, 2025
-Updated: November 27, 2025
-"""
-
+import signal
 from PyQt6.QtCore import QTimer, QObject, pyqtSignal
 from kartel_data import get_real_data_manager
 
@@ -30,6 +19,28 @@ class KartelController(QObject):
         self.setup_real_data_connections()
         
         print("✅ Using REAL MQTT data from ESP32 via Teknohole")
+    
+    def cleanup(self):
+        """Cleanup resources saat aplikasi shutdown"""
+        try:
+            print("🔄 Controller cleanup: Stopping timers...")
+            
+            # Stop semua timer
+            if hasattr(self, 'status_timer') and self.status_timer.isActive():
+                self.status_timer.stop()
+            
+            if hasattr(self, 'device_status_timer') and self.device_status_timer.isActive():
+                self.device_status_timer.stop()
+            
+            # Disconnect data manager
+            if hasattr(self, 'data_manager') and hasattr(self.data_manager, 'disconnect'):
+                print("📡 Disconnecting MQTT...")
+                self.data_manager.disconnect()
+            
+            print("✅ Controller cleanup completed")
+            
+        except Exception as e:
+            print(f"⚠ Error during controller cleanup: {e}")
     
     def setup_real_data_connections(self):
         """Pengaturan koneksi untuk pengelola data MQTT real"""
@@ -210,6 +221,13 @@ class KartelController(QObject):
         }
     
     def disconnect(self):
-        """Putuskan koneksi dari broker MQTT"""
-        if hasattr(self.data_manager, 'disconnect'):
-            self.data_manager.disconnect()
+        """Putuskan koneksi dari broker MQTT dan cleanup"""
+        try:
+            if hasattr(self.data_manager, 'disconnect'):
+                self.data_manager.disconnect()
+            
+            # Juga lakukan cleanup timer
+            self.cleanup()
+            
+        except Exception as e:
+            print(f"⚠ Error during disconnect: {e}")
