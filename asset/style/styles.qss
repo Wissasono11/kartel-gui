@@ -167,9 +167,15 @@ QLabel#statusMotorIdle {
     color: #92400e; /* Yellow-800 */
 }
 QLabel#statusTimer {
-    background-color: #e0f2fe; /* Sky-100 */
+    background-color: #e0f2fe; /* Sky-100 - Default state (interval countdown) */
     color: #0c4a6e; /* Sky-800 */
     font-size: 18px;
+}
+QLabel#statusTimerActive {
+    background-color: #fef3c7; /* Amber-100 - Active rotation countdown */
+    color: #92400e; /* Amber-800 */
+    font-size: 18px;
+    font-weight: bold;
 }
 
 /* --- 4. Grafik --- */

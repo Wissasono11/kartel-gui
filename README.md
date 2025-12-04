@@ -1,67 +1,122 @@
 <div align="center">
-  <img src="asset/img/kartel-logo.png" alt="KARTEL Logo" width="120" height="120">
+  <img src="asset/img/kartel-logo.png" alt="KARTEL Logo" width="140" height="140">
   
-  # KARTEL - Kendali Automasi Ruangan Telur
+  # KARTEL (Kendali Automasi Ruangan Telur)
   
-  [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-  [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg)](https://pypi.org/project/PyQt6/)
-  [![MQTT](https://img.shields.io/badge/MQTT-Teknohole-orange.svg)](https://mqtt.teknohole.com)
+  **Dashboard Monitoring Inkubator Cerdas Berbasis IoT & Desktop**
+
+  [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+  [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-green.svg?style=for-the-badge&logo=qt&logoColor=white)](https://pypi.org/project/PyQt6/)
+  [![MQTT](https://img.shields.io/badge/Protocol-MQTT-orange.svg?style=for-the-badge&logo=mqtt&logoColor=white)](https://mqtt.org)
+  [![Architecture](https://img.shields.io/badge/Architecture-MVC-purple.svg?style=for-the-badge)](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller)
+
 </div>
 
-Dashboard monitoring inkubator telur dengan data real-time dari ESP32 via MQTT.
+---
+
+## 📖 Tentang Proyek
+
+**KARTEL** adalah aplikasi desktop modern yang dibangun menggunakan Python (PyQt6) untuk memantau dan mengendalikan mesin penetas telur secara *real-time*. Aplikasi ini berkomunikasi dengan perangkat keras (seperti ESP32) melalui protokol MQTT, memungkinkan pemantauan suhu, kelembaban, dan status motor pembalik telur dari jarak jauh.
+
+Proyek ini telah direfaktor sepenuhnya menggunakan arsitektur **MVC (Model-View-Controller)** untuk memastikan kode yang modular, mudah dipelihara, dan *scalable*.
 
 ## ✨ Fitur Utama
 
-- 📊 **Real-time Data** - Suhu & kelembaban langsung dari ESP32
-- 🔌 **MQTT Connection** - Manual connect/disconnect ke broker
-- 📈 **Live Charts** - Grafik dengan tooltip interaktif
-- ⚙️ **Profile Settings** - Preset untuk telur ayam & bebek
-- 🎛️ **Device Status** - Monitor power & motor rotation
+*   📊 **Real-time Monitoring** - Menampilkan grafik Suhu & Kelembaban secara langsung (live) dengan data dari sensor.
+*   🔄 **Komunikasi Dua Arah** - Mengirim perintah *Setpoint* suhu ke alat dan menerima umpan balik status.
+*   📈 **Grafik Interaktif** - Visualisasi data historis dengan fitur *tooltip* interaktif menggunakan `PyQtGraph`.
+*   ⚙️ **Manajemen Profil** - Tersedia profil inkubasi otomatis (Ayam/Bebek) atau pengaturan manual (Custom).
+*   🔌 **Koneksi MQTT Stabil** - Dilengkapi fitur *auto-reconnect*, *heartbeat*, dan indikator status koneksi.
+*   🔒 **Keamanan Kredensial** - Penyimpanan username/password MQTT terenkripsi aman menggunakan `cryptography` dan `keyring`.
+*   🎨 **UI Modern** - Antarmuka yang bersih dengan tema warna intuitif dan responsif.
 
-## 🚀 Quick Start
+## 📂 Struktur Proyek (v5.0)
 
-### 1. Install Dependencies
+Struktur direktori telah dirapikan untuk memisahkan logika bisnis, tampilan, dan data:
+
+```text
+KARTEL-GUI/
+├── main.py                  # Entry Point Aplikasi
+├── test_mqtt_sender.py      # Simulator Perangkat (untuk testing)
+├── requirements.txt         # Daftar dependensi
+├── asset/                   # Aset Gambar, Ikon SVG, & Stylesheet (.qss)
+├── data/                    # Penyimpanan Data Lokal (JSON)
+└── src/                     # Source Code Utama
+    ├── config/              # Konfigurasi Global (Settings)
+    ├── controllers/         # Logika Penghubung (Event Handlers)
+    ├── services/            # Logika Bisnis (MQTT, Auth, Data Store)
+    └── views/               # Komponen Tampilan (Widgets, Graphs, Panels)
+```
+
+## 🚀 Instalasi & Penggunaan
+
+Ikuti langkah-langkah berikut untuk menjalankan aplikasi di komputer Anda:
+
+### 1. Persiapan Lingkungan
+Pastikan Python 3.8+ sudah terinstall. Disarankan menggunakan *Virtual Environment*.
+
+```bash
+# Buat virtual environment (Opsional)
+python -m venv venv
+
+# Aktifkan virtual environment
+# Windows:
+venv\Scripts\activate
+# Mac/Linux:
+source venv/bin/activate
+```
+
+### 2. Install Dependensi
+Install semua pustaka yang dibutuhkan melalui `requirements.txt`:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run Application
+### 3. Jalankan Aplikasi
+Jalankan file utama untuk membuka dashboard:
+
 ```bash
-python kartel_dashboard.py
+python main.py
 ```
 
-## 📊 Status Cards
+### 4. Jalankan Simulator (Opsional)
+Jika Anda tidak memiliki perangkat keras ESP32, Anda dapat menjalankan simulator untuk mengirim data palsu ke dashboard:
 
-- **Power** - Heater power status from ESP32 data
-- **Motor Pembalik** - Rotation status from ESP32 `rotate_on` data  
-- **Putaran Berikutnya** - Static timer display
+```bash
+python test_mqtt_sender.py
+```
 
-## ⚙️ Incubation Profiles
+## ⚙️ Konfigurasi MQTT
 
-| Type | Temperature | Duration |
-|------|-------------|----------|
-| 🐔 Ayam | 38.0°C | 21 days |
-| 🦆 Bebek | 37.5°C | 28 days |
+Pengaturan default broker dapat diubah di file `src/config/settings.py`.
 
-## 🔌 MQTT Settings
+| Parameter | Default Value | Deskripsi |
+| :--- | :--- | :--- |
+| **Broker** | `mqtt.teknohole.com` | Alamat server MQTT |
+| **Port** | `1884` | Port koneksi |
+| **Topic Status** | `topic/penetasan/status` | Topic untuk menerima data sensor (Subscribe) |
+| **Topic Command** | `topic/penetasan/command` | Topic untuk mengirim perintah (Publish) |
 
-- **Broker**: `mqtt.teknohole.com:1884`
-- **Topic**: `topic/penetasan/status`
-- **Data Format**: `{"temperature": 38.5, "humidity": 65.2, "power": 75, "rotate_on": 1}`
+## 📡 Protokol Data (JSON)
 
-## 📝 Recent Updates (v4.0.0)
+Aplikasi mengharapkan format JSON berikut dari perangkat keras (ESP32):
 
-- ✅ Manual connection requirement (no auto-connect)
-- ✅ Power card shows ESP32 heater power data
-- ✅ Motor status from ESP32 `rotate_on` field
-- ✅ Removed manual device controls
-- ✅ Simplified UI - monitoring focused
-- ✅ Temperature-only setpoint configuration
+```json
+{
+  "temperature": 38.5,   // Float: Suhu saat ini
+  "humidity": 60.2,      // Float: Kelembaban saat ini
+  "power": 45,           // Int: Persentase daya pemanas (0-100)
+  "rotate_on": 1,        // Int: 1 = Motor berputar, 0 = Diam
+  "SET": 38.0            // Float: Target suhu yang sedang aktif di alat
+}
+```
 
----
+## 🛠️ Teknologi yang Digunakan
 
-<div align="center">
-
-**🥚 KARTEL - Modern Egg Incubator Monitoring 🥚**
-
-</div>
+*   **Bahasa:** Python 3.10+
+*   **GUI Framework:** PyQt6
+*   **Plotting Library:** PyQtGraph
+*   **IoT Protocol:** Paho MQTT Client
+*   **Security:** Cryptography & Keyring
+*   **Icons:** QtAwesome & SVG Custom

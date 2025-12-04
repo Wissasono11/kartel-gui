@@ -2,24 +2,33 @@ import os
 import qtawesome as qta
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
-    QLineEdit, QPushButton, QComboBox, QScrollArea, QSpacerItem, 
-    QSizePolicy, QGridLayout, QMessageBox
+    QPushButton, QSizePolicy
 )
-from PyQt6.QtGui import QFont, QPixmap, QIcon, QFontDatabase, QColor, QPainter
+from PyQt6.QtGui import QPixmap, QIcon, QPainter, QColor
 from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtSvg import QSvgRenderer
 
+# Import konfigurasi path agar gambar selalu ketemu
+from src.config.settings import ASSET_DIR
 
-class DashboardUIComponents:
-    """Contains all UI component creation methods"""
+class DashboardWidgets:
+    """
+    Factory Class untuk membuat komponen UI (Widgets).
+    Berfungsi memisahkan kode tampilan yang 'berantakan' dari Main Window.
+    """
     
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, main_window):
+        self.parent = main_window
     
+    def _get_asset_path(self, subfolder, filename):
+        """Helper private untuk mendapatkan path aset yang valid"""
+        return os.path.join(ASSET_DIR, subfolder, filename)
+
     def load_svg_icon(self, svg_filename, size=QSize(24, 24)):
         """Load SVG icon dengan warna asli tanpa customisasi"""
-        svg_path = f"asset/svg/{svg_filename}"
+        svg_path = self._get_asset_path('svg', svg_filename)
+        
         if os.path.exists(svg_path):
-            from PyQt6.QtSvg import QSvgRenderer
             renderer = QSvgRenderer(svg_path)
             pixmap = QPixmap(size)
             pixmap.fill(Qt.GlobalColor.transparent)
@@ -43,7 +52,8 @@ class DashboardUIComponents:
 
         # Logo dan Judul
         logo_label = QLabel()
-        logo_path = "asset/img/kartel-logo.png"
+        logo_path = self._get_asset_path('img', 'kartel-logo.png')
+        
         if os.path.exists(logo_path):
             logo_pixmap = QPixmap(logo_path)
             if not logo_pixmap.isNull():
@@ -66,12 +76,12 @@ class DashboardUIComponents:
         header_layout.addLayout(title_layout)
         header_layout.addStretch()
 
-        # Tombol Status (akan diupdate secara dinamis)
+        # Tombol Status (Disimpan ke parent agar bisa diupdate Controller)
         self.parent.status_connect_btn = QPushButton(" Tidak Terhubung")
         self.parent.status_connect_btn.setIcon(QIcon(self.load_svg_icon("wifi-notconnect.svg", QSize(20, 20))))
         self.parent.status_connect_btn.setObjectName("statusNotConnected")
 
-        self.parent.status_day_btn = QPushButton(" Hari ke- 3 dari 21")
+        self.parent.status_day_btn = QPushButton(" Hari ke- --")
         self.parent.status_day_btn.setIcon(QIcon(self.load_svg_icon("calendar.svg", QSize(20, 20))))
         self.parent.status_day_btn.setObjectName("statusDay")
         
@@ -92,8 +102,8 @@ class DashboardUIComponents:
             icon_svg="temperature.svg",
             icon_size=QSize(50, 50),
             title="SUHU",
-            current_value="37.5°C",
-            target_value="38.0°C",
+            current_value="--.-°C",
+            target_value="--.-°C",
             description="Setpoint yang diinginkan",
             object_name="suhuCard"
         )
@@ -104,9 +114,9 @@ class DashboardUIComponents:
             icon_svg="humidity.svg",
             icon_size=QSize(50, 50),
             title="KELEMBABAN",
-            current_value="58.0%",
-            target_value=None,  # No target display for humidity
-            description=None,   # No target description
+            current_value="--.-%",
+            target_value=None,  
+            description=None,   
             object_name="kelembabanCard"
         )
         vitals_layout.addWidget(self.parent.humidity_card)
@@ -172,7 +182,6 @@ class DashboardUIComponents:
             
             card_layout.addWidget(target_box)
         else:
-            # For humidity card, add some spacing to maintain visual balance
             if title == "KELEMBABAN":
                 card_layout.addSpacing(20)
         
@@ -207,7 +216,7 @@ class DashboardUIComponents:
         # Create status cards with references
         self.parent.power_card = self.create_single_status_card("pemanas.svg", "Power", "OFF", "statusNonAktif")
         self.parent.motor_card = self.create_single_status_card("motor-dinamo.svg", "Motor Pembalik", "Idle", "statusMotorIdle")
-        self.parent.timer_card = self.create_single_status_card("sand-clock.svg", "Putaran Berikutnya", "03:00:00", "statusTimer")
+        self.parent.timer_card = self.create_single_status_card("sand-clock.svg", "Putaran Berikutnya", "--:--", "statusTimer")
         
         status_cards_layout.addWidget(self.parent.power_card)
         status_cards_layout.addWidget(self.parent.motor_card)
@@ -255,13 +264,11 @@ class DashboardUIComponents:
         return card
     
     def create_form_label(self, text):
-        """Create form section label"""
         label = QLabel(text)
         label.setObjectName("formSectionTitle")
         return label
         
     def create_divider(self):
-        """Create horizontal divider"""
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
         divider.setFrameShadow(QFrame.Shadow.Sunken)
