@@ -37,7 +37,7 @@ DEFAULT_SETTINGS = {
     "target_humidity": 60.0,
     "buzzer_state": "OFF",
     "relay_on_time": 6,     # seconds (RT_ON)
-    "relay_interval": 3,    # hours (RT_INT)
+    "relay_interval": 1,    # hours (RT_INT)
     "incubation_day": 1,
     "total_days": 21
 }
