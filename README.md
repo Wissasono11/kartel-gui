@@ -30,11 +30,6 @@ pip install -r requirements.txt
 python kartel_dashboard.py
 ```
 
-### 3. Connect to MQTT
-- Username: `kartel`
-- Password: `kartel123`
-- Click "Hubungkan Ke Broker"
-
 ## 📊 Status Cards
 
 - **Power** - Heater power status from ESP32 data
