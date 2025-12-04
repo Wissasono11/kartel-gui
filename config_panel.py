@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
-    QLineEdit, QPushButton, QComboBox, QScrollArea
+    QLineEdit, QPushButton, QComboBox, QScrollArea, QCheckBox
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from ui_components import DashboardUIComponents
+from config import load_user_credentials, clear_user_credentials
 
 
 class DashboardConfigPanel:
@@ -163,6 +164,14 @@ class DashboardConfigPanel:
         self.parent.pass_input.setPlaceholderText("Masukkan password MQTT")
         self.parent.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.parent.pass_input)
+        
+        # Remember Me checkbox
+        self.parent.remember_checkbox = QCheckBox("Ingat kredensial saya")
+        self.parent.remember_checkbox.setObjectName("rememberCheckbox")
+        layout.addWidget(self.parent.remember_checkbox)
+        
+        # Load kredensial yang tersimpan jika ada
+        self.load_saved_credentials()
     
     def add_info_section(self, layout):
         """Menambahkan bagian informasi"""
@@ -209,3 +218,19 @@ class DashboardConfigPanel:
         button_layout.addWidget(cancel_btn)
         button_layout.addWidget(self.parent.connect_btn)
         layout.addLayout(button_layout)
+    
+    def load_saved_credentials(self):
+        """Muat kredensial yang tersimpan jika ada"""
+        try:
+            saved_creds = load_user_credentials()
+            if saved_creds:
+                username = saved_creds.get("username", "")
+                password = saved_creds.get("password", "")
+                
+                if username and password:
+                    self.parent.user_input.setText(username)
+                    self.parent.pass_input.setText(password)
+                    self.parent.remember_checkbox.setChecked(True)
+                    print(f"✅ Auto-loaded saved credentials for: {username}")
+        except Exception as e:
+            print(f"⚠ Error loading saved credentials: {e}")

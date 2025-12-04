@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import Qt, QTimer
+from config import save_user_credentials, clear_user_credentials
 
 
 class DashboardEventHandlers:
@@ -211,8 +212,9 @@ class DashboardEventHandlers:
 
     def attempt_mqtt_connection(self):
         """Coba koneksi MQTT dengan validasi kredensial"""
-        username = self.parent.user_input.text()
-        password = self.parent.pass_input.text()
+        username = self.parent.user_input.text().strip()
+        password = self.parent.pass_input.text().strip()
+        remember_me = self.parent.remember_checkbox.isChecked()
         
         if not username or not password:
             self.show_message("Error", "Username dan password tidak boleh kosong!")
@@ -233,6 +235,14 @@ class DashboardEventHandlers:
         success = self.parent.controller.simulate_mqtt_connection(username, password)
         
         if success:
+            # Simpan kredensial jika user mencentang remember me
+            if remember_me:
+                save_result = save_user_credentials(username, password)
+                if save_result:
+                    print(f"💾 Credentials saved for future use")
+                else:
+                    print(f"⚠ Failed to save credentials")
+            
             self.show_message("Sukses", "Berhasil terhubung ke broker MQTT!")
         else:
             self.show_message("Error", "Gagal terhubung ke broker MQTT!")
@@ -241,19 +251,29 @@ class DashboardEventHandlers:
         self.parent.connect_btn.setEnabled(True)
 
     def reset_mqtt_settings(self):
-        """Putuskan koneksi MQTT dengan broker dan reset pengaturan"""""
-        # Putuskan koneksi MQTT
-        if hasattr(self.parent.controller, 'data_manager'):
-            if self.parent.controller.data_manager.is_connected:
-                self.parent.controller.data_manager.disconnect()
-                print("✅ MQTT disconnected - Auto reconnect disabled")
-            else:
-                # Atur flag untuk mencegah auto reconnect
-                self.parent.controller.data_manager.user_disconnected = True
+        """Putuskan koneksi MQTT dengan broker dan reset pengaturan"""
+        try:
+            # Putuskan koneksi MQTT
+            if hasattr(self.parent.controller, 'data_manager'):
+                if self.parent.controller.data_manager.is_connected:
+                    self.parent.controller.data_manager.disconnect()
+                    print("✅ MQTT disconnected safely - Auto reconnect disabled")
+                else:
+                    # Atur flag untuk mencegah auto reconnect
+                    self.parent.controller.data_manager.user_disconnected = True
+                    print("✅ Auto reconnect disabled")
+        except Exception as e:
+            print(f"⚠ Error during MQTT disconnect: {e}")
         
         # Kosongkan field input
         self.parent.user_input.clear()
         self.parent.pass_input.clear()
+        self.parent.remember_checkbox.setChecked(False)
+        
+        # Hapus kredensial yang tersimpan
+        clear_result = clear_user_credentials()
+        if clear_result:
+            print(f"🗏 Saved credentials cleared")
         
         # Perbarui status koneksi pada UI
         if hasattr(self.parent, 'status_connect_btn'):

@@ -8,6 +8,10 @@ qtawesome>=1.2.0
 numpy>=1.21.0
 paho-mqtt>=1.6.0
 
+# Security for credential storage
+cryptography>=3.4.8
+keyring>=24.0.0
+
 # Optional for enhanced functionality
 requests>=2.28.0
 matplotlib>=3.5.0

@@ -217,6 +217,28 @@ QLineEdit:focus, QComboBox:focus {
     background-color: #ffffff;
 }
 
+/* Checkbox Remember Me */
+QCheckBox#rememberCheckbox {
+    font-size: 13px;
+    color: #374151;
+    padding: 8px 0;
+}
+QCheckBox#rememberCheckbox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d1d5db;
+    border-radius: 3px;
+    background-color: #ffffff;
+}
+QCheckBox#rememberCheckbox::indicator:checked {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+    image: url(asset/svg/check.svg);
+}
+QCheckBox#rememberCheckbox::indicator:hover {
+    border-color: #6366f1;
+}
+
 /* Custom Dropdown Arrow */
 QComboBox::drop-down {
     border: none;

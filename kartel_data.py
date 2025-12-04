@@ -152,7 +152,10 @@ class KartelRealDataManager(QObject):
         self.connection_changed.emit(False)
         
         # Reset motor ke state idle ketika terputus
-        self._reset_motor_to_idle()
+        try:
+            self._reset_motor_to_idle()
+        except Exception as e:
+            print(f"⚠ Error resetting motor state on disconnect: {e}")
         
         if rc != 0:
             print(f"⚠ MQTT unexpected disconnect: {rc}")
@@ -516,6 +519,23 @@ class KartelRealDataManager(QObject):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, lambda: self.emit_status_update(device_status))
     
+    def _reset_motor_to_idle(self):
+        """Reset status motor ke idle saat disconnect"""
+        try:
+            # Reset motor state dan timer
+            self.last_motor_state = False
+            self.motor_remaining_time = 0
+            self.motor_start_time = None
+            
+            # Update current data untuk menunjukkan motor idle
+            if "rotate_on" in self.current_data:
+                self.current_data["rotate_on"] = 0
+            
+            print("🔄 Motor status reset to IDLE (disconnected)")
+            
+        except Exception as e:
+            print(f"⚠ Error in _reset_motor_to_idle: {e}")
+    
     def emit_status_update(self, device_status):
         """Emit sinyal pembaruan status"""
         # Ini akan terhubung ke pembaruan GUI di controller
@@ -661,23 +681,36 @@ class KartelRealDataManager(QObject):
         # Set flag bahwa user disconnect secara manual
         self.user_disconnected = True
         
-        if self.mqtt_client and self.is_connected:
-            self.mqtt_client.loop_stop()
-            self.mqtt_client.disconnect()
-            print(f"🔌 MQTT Disconnected")
-        elif self.mqtt_client:
-            self.mqtt_client.loop_stop()
+        try:
+            if self.mqtt_client and self.is_connected:
+                # Reset motor ke idle sebelum disconnect
+                self._reset_motor_to_idle()
+                
+                # Disconnect dengan aman
+                self.mqtt_client.loop_stop()
+                self.mqtt_client.disconnect()
+                print(f"🔌 MQTT Disconnected safely")
+            elif self.mqtt_client:
+                self.mqtt_client.loop_stop()
+                print(f"🔌 MQTT loop stopped")
+        except Exception as e:
+            print(f"⚠ Error during MQTT disconnect: {e}")
         
+        # Pastikan status direset
         self.is_connected = False
         self.connection_changed.emit(False)
         
-        if hasattr(self, 'connection_timer'):
-            self.connection_timer.stop()
-            print("⏹️ Connection timer stopped")
-            
-        if hasattr(self, 'motor_timer'):
-            self.motor_timer.stop()
-            print("⏹️ Motor real-time timer stopped")
+        # Stop semua timer
+        try:
+            if hasattr(self, 'connection_timer') and self.connection_timer:
+                self.connection_timer.stop()
+                print("⏹️ Connection timer stopped")
+                
+            if hasattr(self, 'motor_timer') and self.motor_timer:
+                self.motor_timer.stop()
+                print("⏹️ Motor real-time timer stopped")
+        except Exception as e:
+            print(f"⚠ Error stopping timers: {e}")
     
     ## Pelacakan Hari Proses Penetasan
     def load_incubation_data(self):
