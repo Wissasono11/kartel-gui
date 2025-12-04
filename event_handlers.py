@@ -10,8 +10,11 @@ class DashboardEventHandlers:
     
     def on_profile_changed(self, profile_name):
         """Tangani perubahan pemilihan profil dengan sinkronisasi penuh"""
+        print(f"🔄 Profile changed to: {profile_name}")
+        
         # Lewati ketika user memilih "Custom (Manual)"
         if profile_name == "Custom (Manual)":
+            print("⏭ Skipping Custom profile")
             return
         
         # memilih profil dan memperbarui setelan
@@ -23,58 +26,102 @@ class DashboardEventHandlers:
                 break
         
         if not selected_profile:
+            print(f"❌ Profile '{profile_name}' not found")
             return
-            
+        
+        print(f"📋 Applying profile: {selected_profile}")
+        
+        # Putuskan sinyal sementara untuk menghindari rekursi saat update input field
+        self.parent.suhu_input.textChanged.disconnect()
+        
+        # perbarui input form dari profil yang dipilih SEBELUM apply_profile
+        old_temp = self.parent.suhu_input.text()
+        self.parent.suhu_input.setText(str(selected_profile["temperature"]))
+        print(f"🌡 Temperature input updated: {old_temp} -> {selected_profile['temperature']}°C")
+        
+        # Hubungkan kembali sinyal setelah update
+        self.parent.suhu_input.textChanged.connect(self.validate_temperature_input)
+        self.parent.suhu_input.textChanged.connect(self.on_manual_setpoint_change)
+        
+        # Terapkan profil ke controller
         success = self.parent.controller.apply_profile(profile_name)
         if success:
-            # perbarui input form dari profil yang dipilih
-            self.parent.suhu_input.setText(str(selected_profile["temperature"]))
-            # Field input kelembaban telah dihapus
+            # Update target label secara langsung untuk memastikan sinkronisasi
+            self.parent.temp_target_label.setText(f"Target: {selected_profile['temperature']}°C")
+            print(f"✅ Profile '{profile_name}' applied successfully")
             
             # Target card akan diupdate otomatis melalui apply_profile dan controller emit
             # Tidak perlu manual update_vital_card_targets lagi
             
             # Gunakan QTimer untuk memastikan pesan muncul di atas setelah UI diperbarui
             QTimer.singleShot(100, lambda: self.show_message("Info", f"Profil '{profile_name}' berhasil diterapkan!\nTarget Suhu: {selected_profile['temperature']}°C"))
+        else:
+            print(f"❌ Failed to apply profile '{profile_name}'")
+            # Jika gagal, kembalikan field input ke nilai sebelumnya
+            target_data = self.parent.controller.data_manager.get_target_values()
+            self.parent.suhu_input.setText(str(target_data["temperature"]))
 
     def apply_settings(self):
         """Terapkan pengaturan suhu (kelembaban dihapus dari UI)"""
+        print("🔧 Applying manual temperature settings...")
         try:
             temp = float(self.parent.suhu_input.text())
+            print(f"🌡 Temperature value: {temp}°C")
             
             # Validasi rentang untuk suhu
             if not (30.0 <= temp <= 45.0):
                 self.show_message("Error", "Suhu harus dalam rentang 30.0-45.0°C!")
                 return
                 
-            self.parent.controller.set_target_temperature(temp)
+            success = self.parent.controller.set_target_temperature(temp)
             
-            # Target card akan diupdate otomatis melalui controller emit
-            # Tidak perlu manual update_vital_card_targets lagi
-            
-            self.show_message("Sukses", "Pengaturan suhu berhasil diterapkan!")
+            if success:
+                print(f"✅ Temperature setting applied: {temp}°C")
+                
+                # Update target label secara langsung
+                self.parent.temp_target_label.setText(f"Target: {temp}°C")
+                
+                # Update profile indicator untuk menunjukkan Custom jika tidak cocok dengan profil
+                default_humidity = 60.0
+                self.update_profile_indicator(temp, default_humidity)
+                
+                # Target card akan diupdate otomatis melalui controller emit
+                # Tidak perlu manual update_vital_card_targets lagi
+                
+                self.show_message("Sukses", f"Pengaturan suhu berhasil diterapkan!\nTarget: {temp}°C")
+            else:
+                print("❌ Failed to apply temperature setting")
+                self.show_message("Error", "Gagal menerapkan pengaturan suhu!")
+                
         except ValueError:
+            print("❌ Invalid temperature input")
             self.show_message("Error", "Mohon masukkan nilai suhu yang valid!")
 
     def validate_temperature_input(self, text):
         """Validasi input suhu"""
         try:
-            value = float(text)
-            if not (20.0 <= value <= 50.0):
-                self.parent.suhu_input.setStyleSheet("border: 2px solid red;")
+            if text.strip():  # Hanya validasi jika ada teks
+                value = float(text)
+                if not (20.0 <= value <= 50.0):
+                    self.parent.suhu_input.setStyleSheet("border: 2px solid red;")
+                    print(f"⚠ Temperature out of range: {value}°C (allowed: 20-50°C)")
+                else:
+                    self.parent.suhu_input.setStyleSheet("")
+                    print(f"✅ Temperature input valid: {value}°C")
             else:
                 self.parent.suhu_input.setStyleSheet("")
         except ValueError:
-            if text:  # Hanya tampilkan error jika ada teks
+            if text.strip():  # Hanya tampilkan error jika ada teks yang tidak kosong
                 self.parent.suhu_input.setStyleSheet("border: 2px solid red;")
+                print(f"❌ Invalid temperature format: '{text}'")
     
     def on_manual_setpoint_change(self, text):
         """Tangani perubahan setpoint manual secara real-time (suhu saja)"""
         try:
             # Dapatkan nilai suhu saat ini
-            temp_text = self.parent.suhu_input.text()
+            temp_text = self.parent.suhu_input.text().strip()
             
-            # Hanya perbarui jika nilai suhu valid
+            # Hanya perbarui jika nilai suhu valid dan tidak kosong
             if temp_text:
                 temp = float(temp_text)
                 
@@ -82,15 +129,24 @@ class DashboardEventHandlers:
                 if (30.0 <= temp <= 45.0):
                     # Perbarui target suhu secara real-time
                     self.parent.temp_target_label.setText(f"Target: {temp}°C")
+                    print(f"🎯 Target temperature updated to: {temp}°C")
                     
                     # Periksa apakah suhu saat ini cocok dengan profil 
                     default_humidity = 60.0  # Kelembaban default untuk pencocokan profil
                     self.update_profile_indicator(temp, default_humidity)
+                else:
+                    print(f"⚠ Temperature {temp}°C is out of valid range (30-45°C)")
                     
         except ValueError:
             # Jika input tidak valid, kembalikan ke nilai suhu terakhir yang diketahui baik
-            target_data = self.parent.controller.data_manager.get_target_values()
-            self.parent.temp_target_label.setText(f"Target: {target_data['temperature']}°C")
+            print(f"❌ Invalid temperature input: '{text}'")
+            try:
+                target_data = self.parent.controller.data_manager.get_target_values()
+                self.parent.temp_target_label.setText(f"Target: {target_data['temperature']}°C")
+            except Exception as e:
+                print(f"⚠ Error restoring target temperature: {e}")
+                # Fallback ke default
+                self.parent.temp_target_label.setText("Target: 37°C")
 
     def update_profile_indicator(self, temp, humidity):
         """Perbarui combo profil untuk menampilkan apakah suhu saat ini cocok dengan profil apa pun"""
@@ -103,8 +159,13 @@ class DashboardEventHandlers:
                 matching_profile = profile["name"]
                 break
         
+        print(f"🔍 Checking profile match for temp {temp}°C: {matching_profile or 'No match'}")
+        
         # Putuskan sinyal sementara untuk menghindari rekursi
-        self.parent.profil_combo.currentTextChanged.disconnect()
+        try:
+            self.parent.profil_combo.currentTextChanged.disconnect()
+        except:
+            pass  # Sinyal mungkin sudah terputus
         
         if matching_profile:
             # Hapus opsi kustom jika ada
@@ -114,9 +175,11 @@ class DashboardEventHandlers:
             index = self.parent.profil_combo.findText(matching_profile)
             if index >= 0:
                 self.parent.profil_combo.setCurrentIndex(index)
+                print(f"✅ Profile combo set to: {matching_profile}")
         else:
             # Tambahkan atau pilih opsi "Custom"
             self.add_custom_profile_option()
+            print("📝 Profile combo set to Custom (Manual)")
         
         # Hubungkan kembali sinyal
         self.parent.profil_combo.currentTextChanged.connect(self.on_profile_changed)
@@ -129,11 +192,13 @@ class DashboardEventHandlers:
         if custom_index == -1:
             # Tambahkan opsi kustom di akhir
             self.parent.profil_combo.addItem(custom_text)
+            print(f"➕ Added custom profile option")
         
         # Pilih opsi kustom
         custom_index = self.parent.profil_combo.findText(custom_text)
         if custom_index >= 0:
             self.parent.profil_combo.setCurrentIndex(custom_index)
+            print(f"✅ Selected custom profile option")
     
     def remove_custom_profile_option(self):
         """Hapus opsi profil kustom dari combo"""
@@ -142,6 +207,7 @@ class DashboardEventHandlers:
         
         if custom_index >= 0:
             self.parent.profil_combo.removeItem(custom_index)
+            print(f"➖ Removed custom profile option")
 
     def attempt_mqtt_connection(self):
         """Coba koneksi MQTT dengan validasi kredensial"""

@@ -68,7 +68,10 @@ class DashboardConfigPanel:
         for profile in profiles:
             self.parent.profil_combo.addItem(profile["name"])
         
+        # Hubungkan sinyal perubahan profil
         self.parent.profil_combo.currentTextChanged.connect(self.parent.event_handlers.on_profile_changed)
+        print(f"✅ Profile combo initialized with {len(profiles)} profiles")
+        
         layout.addWidget(self.parent.profil_combo)
     
     def add_setpoint_section(self, layout):
@@ -88,19 +91,36 @@ class DashboardConfigPanel:
         profiles = self.parent.controller.get_incubation_profiles()
         if profiles:
             default_profile = profiles[0]
+            print(f"🔧 Initializing with default profile: {default_profile['name']}")
+            
+            # Putuskan sinyal sementara untuk menghindari konflik saat inisialisasi
+            try:
+                self.parent.suhu_input.textChanged.disconnect()
+            except:
+                pass  # Sinyal belum terhubung, tidak masalah
+            
+            # Sinkronkan field input dengan profil default SEBELUM apply
+            self.parent.suhu_input.setText(str(default_profile["temperature"]))
+            print(f"🌡 Initial temperature input set to: {default_profile['temperature']}°C")
+            
+            # Hubungkan kembali sinyal setelah set nilai
+            self.parent.suhu_input.textChanged.connect(self.parent.event_handlers.validate_temperature_input)
+            self.parent.suhu_input.textChanged.connect(self.parent.event_handlers.on_manual_setpoint_change)
+            
             # Terapkan profil default secara diam-diam
             success = self.parent.controller.apply_profile(default_profile["name"])
             if success:
-                # Sinkronkan field input dengan profil default 
-                self.parent.suhu_input.setText(str(default_profile["temperature"]))
-                # Field input kelembaban telah dihapus dihapus
-                
+                print(f"✅ Default profile '{default_profile['name']}' applied successfully")
                 # Paksa update target kartu saat startup
                 default_humidity = 60.0
                 self.parent.update_vital_card_targets(
                     default_profile["temperature"], 
                     default_humidity
                 )
+            else:
+                print(f"❌ Failed to apply default profile '{default_profile['name']}'")
+        else:
+            print("⚠ No profiles available for initialization")
         
         # Simpan referensi untuk update 
         self.parent.input_fields['temperature'] = self.parent.suhu_input        

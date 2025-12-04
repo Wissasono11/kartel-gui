@@ -302,12 +302,9 @@ class KartelRealDataManager(QObject):
     
     # ========== Metode Perintah ==========
     
-    def send_command(self, command: dict) -> bool:
-        """Kirim perintah ke ESP32 melalui MQTT"""
+    def send_command_direct(self, command: dict) -> bool:
+        """Kirim perintah ke ESP32 melalui MQTT tanpa error logging jika tidak terhubung"""
         if not self.is_connected or not self.mqtt_client:
-            error_msg = "Tidak terhubung ke MQTT broker"
-            print(f"❌ {error_msg}")
-            self.error_occurred.emit(error_msg)
             return False
         
         try:
@@ -320,35 +317,48 @@ class KartelRealDataManager(QObject):
                 print(f"✅ Command sent: {command_json}")
                 return True
             else:
-                error_msg = f"Gagal mengirim perintah: {result.rc}"
-                print(f"❌ {error_msg}")
-                self.error_occurred.emit(error_msg)
                 return False
                 
-        except Exception as e:
-            error_msg = f"Error mengirim perintah: {str(e)}"
+        except Exception:
+            return False
+    
+    def send_command(self, command: dict) -> bool:
+        """Kirim perintah ke ESP32 melalui MQTT"""
+        if not self.is_connected or not self.mqtt_client:
+            error_msg = "Tidak terhubung ke MQTT broker"
             print(f"❌ {error_msg}")
             self.error_occurred.emit(error_msg)
             return False
+        
+        return self.send_command_direct(command)
     
     def set_target_temperature(self, temperature: float) -> bool:
-        """Kirim suhu target ke ESP32"""
+        """Atur suhu target (kirim ke ESP32 jika terhubung, atau simpan lokal)"""
         if not (20.0 <= temperature <= 50.0):
             error_msg = f"Suhu tidak valid: {temperature}. Harus 20-50°C"
             print(f"⚠ {error_msg}")
             self.error_occurred.emit(error_msg)
             return False
         
-        command = {"SET": temperature}
-        success = self.send_command(command)
-        if success:
-            old_target = self.target_temperature
-            self.target_temperature = temperature  # Simpan target terpisah
-            self.current_data["SET"] = temperature  # Update SET di current_data
-            self.device_settings["target_temperature"] = temperature
-            print(f"🎯 SET Status: Target temperature diatur dari panel pengaturan: {old_target}°C -> {temperature}°C")
-            print(f"🎯 Target Temperature: {temperature}°C (Set via Panel Input)")
-        return success
+        # Simpan target lokal
+        old_target = self.target_temperature
+        self.target_temperature = temperature
+        self.current_data["SET"] = temperature  # Update SET di current_data
+        self.device_settings["target_temperature"] = temperature
+        
+        # Kirim command MQTT hanya jika terhubung
+        if self.is_connected and self.mqtt_client:
+            command = {"SET": temperature}
+            mqtt_success = self.send_command_direct(command)
+            if mqtt_success:
+                print(f"🎯 SET Status: Target temperature diatur dari panel pengaturan: {old_target}°C -> {temperature}°C")
+                print(f"🎯 Target Temperature: {temperature}°C (Set via Panel Input + MQTT)")
+            else:
+                print(f"⚠ MQTT command failed, but temperature set locally: {old_target}°C -> {temperature}°C")
+        else:
+            print(f"📱 Target temperature set locally: {old_target}°C -> {temperature}°C (MQTT not connected)")
+            
+        return True
     
     def set_buzzer(self, state: str) -> bool:
         """Kontrol buzzer ON/OFF"""
@@ -565,20 +575,34 @@ class KartelRealDataManager(QObject):
         profiles = self.get_incubation_profiles()
         for profile in profiles:
             if profile["name"] == profile_name:
-                # Perbarui target suhu saja
-                temp_success = self.set_target_temperature(profile["temperature"])
+                # Perbarui target suhu lokal (tanpa mengirim MQTT command jika tidak terhubung)
+                old_target = self.target_temperature
+                self.target_temperature = profile["temperature"]
+                self.device_settings["target_temperature"] = profile["temperature"]
+                self.current_data["SET"] = profile["temperature"]  # Update SET di current_data
+                
                 # Gunakan kelembaban default (60%) untuk semua profil
                 self.device_settings["target_humidity"] = 60.0
+                self.device_settings["total_days"] = profile["duration"]
                 
-                if temp_success:
-                    self.target_temperature = profile["temperature"]  # Set target terpisah juga
-                    self.device_settings["total_days"] = profile["duration"]
-                    # Simpan data penetasan yang diperbarui ketika profil berubah
-                    if self.incubation_start_date:
-                        self.save_incubation_data()
-                    print(f"✅ Profile '{profile_name}' applied: {profile['temperature']}°C, Default Humidity: 60%")
-                    print(f"📊 Incubation duration updated: {profile['duration']} days")
-                return temp_success
+                # Kirim command MQTT hanya jika terhubung
+                if self.is_connected and self.mqtt_client:
+                    command = {"SET": profile["temperature"]}
+                    mqtt_success = self.send_command(command)
+                    if not mqtt_success:
+                        print(f"⚠ MQTT command failed, but profile applied locally")
+                else:
+                    print(f"📱 Profile applied locally (MQTT not connected)")
+                
+                # Simpan data penetasan yang diperbarui ketika profil berubah
+                if self.incubation_start_date:
+                    self.save_incubation_data()
+                    
+                print(f"✅ Profile '{profile_name}' applied: {old_target}°C -> {profile['temperature']}°C, Default Humidity: 60%")
+                print(f"📊 Incubation duration updated: {profile['duration']} days")
+                return True
+                
+        print(f"❌ Profile '{profile_name}' not found")
         return False
     
     def connect(self):
