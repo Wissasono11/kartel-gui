@@ -191,8 +191,6 @@ class DashboardEventHandlers:
             self.show_message("Error", "Username dan password tidak boleh kosong!")
             return
         
-        # Validasi sederhana (sebaiknya ini dipindah ke AuthService atau Controller logic nanti)
-        # Untuk sekarang kita biarkan di sini agar logic tidak terlalu banyak berubah
         valid_u = "kartel"
         valid_p = "kartel123"
         

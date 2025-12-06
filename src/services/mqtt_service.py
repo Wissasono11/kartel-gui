@@ -102,9 +102,7 @@ class MqttService(QObject):
     def _setup_mqtt_client(self):
         try:
             client_id = f"kartel_gui_{int(time.time())}"
-            # self.mqtt_client = mqtt.Client(client_id=client_id)
-            
-            # Tambahkan mqtt.CallbackAPIVersion.VERSION1
+            # Tambahkan mqtt.CallbackAPIVersion.VERSION1 agar kompatibel dengan library Paho v2
             self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=client_id)
 
             # Callbacks
@@ -204,7 +202,7 @@ class MqttService(QObject):
         updated = False
         
         # PERBAIKAN: List key disesuaikan dengan JSON dari ESP32
-        # Menghapus 'humidifier_power', menambahkan 'SET'
+        # ["temperature", "humidity", "power", "rotate_on", "SET"]
         valid_keys = ["temperature", "humidity", "power", "rotate_on", "SET"]
         
         for key in valid_keys:
@@ -218,7 +216,6 @@ class MqttService(QObject):
                     updated = True
                     
                     # LOGIKA TAMBAHAN KHUSUS 'SET':
-                    # Jika ESP32 mengirim balik nilai 'SET' (konfirmasi target),
                     if key == "SET":
                         self.target_temperature = val
                         self.device_settings["target_temperature"] = val
@@ -228,13 +225,12 @@ class MqttService(QObject):
         
         if updated:
             # Update History (Hanya jika ada suhu/kelembaban)
-            # Kita gunakan nilai yang ada di current_data
             self._update_history(
                 self.current_data["temperature"], 
                 self.current_data["humidity"]
             )
             
-            # Emit Signal ke UI (agar angka di dashboard berubah dari --.-)
+            # Emit Signal ke UI
             self.data_received.emit(self.current_data.copy())
 
     def _update_history(self, temp, humidity):
@@ -255,21 +251,25 @@ class MqttService(QObject):
 
     def _update_motor_logic(self):
         """Logika countdown motor (dijalankan tiap detik oleh QTimer)"""
+        # Ambil nilai rotate_on (sisa waktu/derajat putar)
         rotate_val = self.current_data.get("rotate_on", 0)
+        
+        # Logic utama: Jika rotate_on != 0 maka dianggap sedang berputar
         is_rotating = rotate_val != 0
         
-        # 1. Deteksi mulai berputar
+        # Logic internal timer untuk visualisasi countdown yang halus
         if is_rotating and not self.last_motor_state:
+            # Baru mulai berputar
             self.motor_start_time = time.time()
             self.motor_remaining_time = self.motor_duration
             
-        # 2. Sedang berputar
         elif is_rotating and self.motor_start_time:
+            # Sedang berputar (hitung mundur lokal untuk visualisasi)
             elapsed = time.time() - self.motor_start_time
             self.motor_remaining_time = max(0, self.motor_duration - int(elapsed))
             
-        # 3. Berhenti
         elif not is_rotating:
+            # Berhenti (Idle)
             self.motor_remaining_time = 0
             self.motor_start_time = None
             
@@ -284,16 +284,30 @@ class MqttService(QObject):
 
     def get_device_status(self) -> Dict[str, Any]:
         """Menyiapkan object status untuk UI"""
-        rotate_val = self.current_data.get("rotate_on", 0)
-        is_rotating = rotate_val != 0
         
-        # Logic Countdown Tampilan
-        if is_rotating:
-            timer_text = f"{self.motor_remaining_time:02d}s"
+        # ---------------------------------------------------------
+        # PERBAIKAN LOGIKA STATUS MOTOR & FORMAT TIMER
+        # ---------------------------------------------------------
+        # Ambil nilai langsung dari data MQTT terakhir
+        rotate_val = self.current_data.get("rotate_on", 0)
+        
+        # Tentukan status berdasarkan nilai tersebut
+        if rotate_val != 0:
+            is_rotating = True
+            status_text = "Berputar"
+            # Saat berputar, hitung jam, menit, detik dari sisa waktu (detik)
+            hours = self.motor_remaining_time // 3600
+            minutes = (self.motor_remaining_time % 3600) // 60
+            seconds = self.motor_remaining_time % 60
+            timer_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         else:
-            # Jika idle, tampilkan interval setting (misal 3 jam lagi)
-            interval = self.device_settings["relay_interval"]
-            timer_text = f"{interval:02d}:00"
+            is_rotating = False
+            status_text = "Idle"
+            # Saat idle, tampilkan interval putaran berikutnya (jam) dalam format H:M:S
+            interval_hours = self.device_settings["relay_interval"]
+            timer_text = f"{interval_hours:02d}:00:00"
+        
+        # ---------------------------------------------------------
 
         # Logic Hari
         current_day = self._calculate_day()
@@ -306,7 +320,7 @@ class MqttService(QObject):
                 "active": self.current_data["power"] > 0
             },
             "motor": {
-                "status": "Berputar" if is_rotating else "Idle",
+                "status": status_text, # "Berputar" atau "Idle"
                 "active": is_rotating
             },
             "timer": {
