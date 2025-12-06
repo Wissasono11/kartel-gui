@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
-    QLineEdit, QPushButton, QComboBox, QScrollArea, QCheckBox
+    QLineEdit, QPushButton, QComboBox, QScrollArea, QCheckBox, QDateEdit
 )
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, QDate
+from datetime import datetime
 
 # Import komponen widget kita
 from src.views.components.widgets import DashboardWidgets
@@ -78,6 +79,34 @@ class DashboardPanels:
             )
         
         layout.addWidget(self.parent.profil_combo)
+        
+        # Tanggal Mulai Inkubasi
+        layout.addWidget(self.widgets.create_form_label("Tanggal Mulai Inkubasi"))
+    
+        self.parent.start_date_input = QDateEdit()
+        self.parent.start_date_input.setCalendarPopup(True) 
+        self.parent.start_date_input.setDisplayFormat("dd MMM yyyy")
+        
+        # [BARU] Set ID agar bisa di-style di QSS untuk tinggi/padding
+        self.parent.start_date_input.setObjectName("dateInput") 
+        
+        # Inisialisasi tanggal
+        if hasattr(self.parent, 'controller'):
+            saved_date = self.parent.controller.mqtt_service.get_start_date()
+            if saved_date:
+                qdate = QDate(saved_date.year, saved_date.month, saved_date.day)
+                self.parent.start_date_input.setDate(qdate)
+            else:
+                self.parent.start_date_input.setDate(QDate.currentDate())
+                
+        layout.addWidget(self.parent.start_date_input)
+        
+        # Tombol Update Tanggal
+        update_date_btn = QPushButton("Update Tanggal")
+        update_date_btn.setObjectName("applyButton") 
+        
+        update_date_btn.clicked.connect(self.parent.event_handlers.update_incubation_date)
+        layout.addWidget(update_date_btn)
     
     def add_setpoint_section(self, layout):
         """Form Input Suhu Manual"""

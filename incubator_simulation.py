@@ -19,9 +19,9 @@ class IncubatorState:
     def __init__(self):
         # Settingan Default
         self.target_temp = 37.5
-        self.relay_on_duration = 10     # Detik (Lama berputar)
-        self.relay_interval = 60000     # Milidetik (Default simulasi 1 menit agar cepat tes)
-                                        # Ubah ke 10800000 untuk 3 jam
+        self.relay_on_duration = 6      # Detik (Default lama putaran 6 detik)
+        self.relay_interval = 60000     # Milidetik (Default 1 menit agar cepat dites)
+                                        # Nanti bisa diubah lewat GUI jadi 1 jam/3 jam
         
         # Variabel Sensor & Aktuator
         self.current_temp = 28.0        # Suhu awal simulasi
@@ -91,7 +91,6 @@ def on_message(client, userdata, msg):
         # 1. Parsing format string "SET" (Sesuai kode C++)
         if '"SET"' in payload:
             try:
-                # Cari angka setelah SET menggunakan regex
                 match = re.search(r'"SET"[^\d\.]*([\d\.]+)', payload)
                 if match:
                     new_temp = float(match.group(1))
@@ -134,8 +133,7 @@ def on_message(client, userdata, msg):
 # ================= MAIN PROGRAM =================
 
 def main():
-    # PERBAIKAN UTAMA DI SINI:
-    # Menambahkan mqtt.CallbackAPIVersion.VERSION1 agar kompatibel dengan library baru
+    # Menambahkan mqtt.CallbackAPIVersion.VERSION1 agar kompatibel
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "ESP32_Simulator_Python")
     
     client.username_pw_set(USERNAME, PASSWORD)
@@ -158,18 +156,20 @@ def main():
             state.update_physics()
             state.check_relay()
             
-            # 2. Publish Data (Setiap 5 detik)
-            if (current_millis - last_publish) >= 5000:
+            # 2. Publish Data (Setiap 2 detik agar lebih responsif)
+            if (current_millis - last_publish) >= 2000:
                 last_publish = current_millis
                 
-                # LOGIKA PENTING: Hitung sisa waktu rotasi (detik) untuk dikirim ke GUI
-                # Ini meniru logika: long remSec = (future_rotate > now) ? ...
+                # --- LOGIKA STATUS MOTOR (UPDATED) ---
                 if state.relay_currently_on:
-                    # Jika relay sedang ON, kirim sisa durasi ON
+                    # Jika relay sedang ON, kirim sisa durasi ON dalam detik
                     elapsed = current_millis - state.last_relay_run
-                    rem_sec = max(0, int((state.relay_on_duration * 1000 - elapsed) / 1000))
-                    # Pastikan minimal 1 agar status tetap 'Berputar' di GUI
-                    if rem_sec == 0: rem_sec = 1 
+                    # Hitung sisa waktu (total durasi - waktu berjalan)
+                    rem_sec = max(0, int(state.relay_on_duration - (elapsed / 1000)))
+                    
+                    # Pastikan minimal bernilai 1 jika relay masih ON
+                    # Agar GUI tetap membaca "Berputar" (karena != 0)
+                    if rem_sec == 0: rem_sec = 1
                 else:
                     # Jika relay OFF, kirim 0 (Idle)
                     rem_sec = 0
@@ -179,8 +179,8 @@ def main():
                     "temperature": round(state.current_temp, 1),
                     "humidity": round(state.current_hum, 1),
                     "power": state.dimmer_power,
-                    "rotate_on": rem_sec, 
-                    "SET": state.target_temp 
+                    "rotate_on": rem_sec,  
+                    "SET": state.target_temp
                 }
                 
                 json_str = json.dumps(payload)

@@ -276,7 +276,39 @@ QPushButton#applyButton:hover {
     background-color: #4338ca; /* Indigo-700 */
 }
 
-/* Manual control buttons removed - not needed */
+/* --- Styling Khusus Date Picker --- */
+QDateEdit#dateInput {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #374151;
+    background-color: #f9fafb;
+    min-height: 24px; 
+}
+
+/* Mengatur icon kalender di sebelah kanan */
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border-left-width: 0px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Indikator panah bawah (opsional, jika ingin custom arrow) */
+QDateEdit::down-arrow {
+    image: url(asset/svg/calendar.svg); 
+    width: 12px;
+    height: 12px;
+}
+
+/* Efek saat form aktif/diklik */
+QDateEdit#dateInput:focus {
+    border: 1px solid #4f46e5; /* Warna Ungu Kartel */
+    background-color:white;
+}
 
 QPushButton#cancelButton {
     background-color: #ffffff;

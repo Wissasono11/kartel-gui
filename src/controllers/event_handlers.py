@@ -178,7 +178,22 @@ class DashboardEventHandlers:
             self.view.profil_combo.removeItem(index)
 
     # =========================================================================
-    # 3. AUTH & MQTT CONNECTION HANDLERS
+    # 3. INCUBATION DATE HANDLER
+    # =========================================================================
+    def update_incubation_date(self):
+        """Update tanggal mulai inkubasi dari Date Picker"""
+        qdate = self.view.start_date_input.date()
+        success = self.controller.mqtt_service.set_manual_start_date(
+            qdate.year(), qdate.month(), qdate.day()
+        )
+        
+        if success:
+            self.show_message("Sukses", f"Tanggal mulai diupdate ke: {qdate.toString('dd MMM yyyy')}")
+        else:
+            self.show_message("Error", "Gagal mengupdate tanggal.")
+            
+    # =========================================================================
+    # 4. AUTH & MQTT CONNECTION HANDLERS
     # =========================================================================
 
     def attempt_mqtt_connection(self):
@@ -249,7 +264,7 @@ class DashboardEventHandlers:
             self.view.setStyleSheet(self.view.styleSheet()) 
 
     # =========================================================================
-    # 4. UTILITIES
+    # 5. UTILITIES
     # =========================================================================
 
     def show_message(self, title, message):
