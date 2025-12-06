@@ -7,8 +7,8 @@ import re  # Diperlukan untuk parsing regex
 # ================= KONFIGURASI =================
 BROKER = "mqtt.teknohole.com"
 PORT = 1884
-USERNAME = "kartel"
-PASSWORD = "kartel123"
+USERNAME = ""
+PASSWORD = ""
 
 # Topik
 TOPIC_STATUS = "topic/penetasan/status"   # Publish
@@ -21,7 +21,6 @@ class IncubatorState:
         self.target_temp = 37.5
         self.relay_on_duration = 6      # Detik (Default lama putaran 6 detik)
         self.relay_interval = 60000     # Milidetik (Default 1 menit agar cepat dites)
-                                        # Nanti bisa diubah lewat GUI jadi 1 jam/3 jam
         
         # Variabel Sensor & Aktuator
         self.current_temp = 28.0        # Suhu awal simulasi
