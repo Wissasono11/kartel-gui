@@ -10,6 +10,8 @@ from src.views.components.widgets import DashboardWidgets
 # Import service untuk kredensial
 from src.services.auth_service import AuthService
 
+# Import dari helper
+from src.utils.helpers import resource_path
 class DashboardPanels:
     """
     Menangani pembuatan Panel Konfigurasi (Sidebar Kanan).
@@ -186,6 +188,20 @@ class DashboardPanels:
         # Remember Me
         self.parent.remember_checkbox = QCheckBox("Ingat kredensial saya")
         self.parent.remember_checkbox.setObjectName("rememberCheckbox")
+
+        # Inject CSS via Python untuk Path Gambar
+        icon_checked = resource_path("asset/svg/check.svg")
+
+        icon_checked = icon_checked.replace('\\', '/')
+
+        self.parent.remember_checkbox.setStyleSheet(f"""
+            QCheckBox::indicator:checked {{
+                image: url({icon_checked});
+                background-color: #4f46e5;
+                border-color: #4f46e5;
+            }}
+        """)
+
         layout.addWidget(self.parent.remember_checkbox)
         
         # Load Credential via Service
