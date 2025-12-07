@@ -11,6 +11,9 @@ from PyQt6.QtSvg import QSvgRenderer
 # Import konfigurasi path agar gambar selalu ketemu
 from src.config.settings import ASSET_DIR
 
+# --- IMPORT DARI HELPER ---
+from src.utils.helpers import resource_path
+
 class DashboardWidgets:
     """
     Factory Class untuk membuat komponen UI (Widgets).
@@ -22,7 +25,11 @@ class DashboardWidgets:
     
     def _get_asset_path(self, subfolder, filename):
         """Helper private untuk mendapatkan path aset yang valid"""
-        return os.path.join(ASSET_DIR, subfolder, filename)
+        # Buat path relatif
+        full_relative_path = os.path.join(ASSET_DIR, subfolder, filename)
+        
+        # Bungkus dengan resource_path agar dikenali PyInstaller
+        return resource_path(full_relative_path)
 
     def load_svg_icon(self, svg_filename, size=QSize(24, 24)):
         """Load SVG icon dengan warna asli tanpa customisasi"""

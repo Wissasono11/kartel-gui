@@ -3,7 +3,7 @@ import os
 import signal
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import qInstallMessageHandler, QtMsgType # <--- Import ini
+from PyQt6.QtCore import qInstallMessageHandler, QtMsgType 
 import pyqtgraph as pg
 
 # Tambahkan path root ke sys.path
@@ -36,7 +36,7 @@ def qt_message_handler(mode, context, message):
 
 def main():
     # Pasang handler kustom KITA SEBELUM membuat QApplication
-    qInstallMessageHandler(qt_message_handler) # <--- Pasang di sini
+    qInstallMessageHandler(qt_message_handler)
 
     # Setup PyqtGraph
     pg.setConfigOptions(antialias=True)

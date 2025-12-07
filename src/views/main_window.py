@@ -17,6 +17,9 @@ from src.views.components.graphs import DashboardGraphs
 from src.views.components.panels import DashboardPanels
 from src.config.settings import ASSET_DIR
 
+# --- IMPORT DARI HELPER ---
+from src.utils.helpers import resource_path
+
 class KartelMainWindow(QWidget):
     """
     Jendela Utama Aplikasi (Dashboard).
@@ -39,25 +42,25 @@ class KartelMainWindow(QWidget):
             'humidity': None
         }
         
-        # 1. Inisialisasi Controller (Logic)
+        # Inisialisasi Controller (Logic)
         self.controller = MainController()
         
-        # 2. Inisialisasi Event Handlers (Interaction)
+        # Inisialisasi Event Handlers (Interaction)
         self.event_handlers = DashboardEventHandlers(self)
         
-        # 3. Inisialisasi Komponen UI (View Helpers)
+        # Inisialisasi Komponen UI (View Helpers)
         self.widgets_helper = DashboardWidgets(self)
         self.graphs_helper = DashboardGraphs(self)
         self.panels_helper = DashboardPanels(self)
         
-        # 4. Setup Koneksi Controller -> UI
+        # Setup Koneksi Controller -> UI
         self.setup_controller_connections()
         
-        # 5. Bangun Antarmuka
+        # Bangun Antarmuka
         self.load_custom_fonts()
         self.init_ui()
         
-        # 6. Startup Sequence
+        # Startup Sequence
         QTimer.singleShot(500, self.force_sync_current_profile)
         
         # Timer Refresh Data (Polling UI)
@@ -76,8 +79,8 @@ class KartelMainWindow(QWidget):
         self.setGeometry(100, 100, 1400, 900)
         self.setMinimumSize(1000, 600)
         
-        # Icon Window
-        icon_path = os.path.join(ASSET_DIR, 'img', 'kartel-logo.png')
+        # Gunakan resource_path untuk Logo 
+        icon_path = resource_path(os.path.join(ASSET_DIR, 'img', 'kartel-logo.png'))
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         
@@ -147,8 +150,6 @@ class KartelMainWindow(QWidget):
     @pyqtSlot(dict)
     def update_graph_data(self, data):
         """Update data grafik"""
-        # Logic update data grafik dipindah ke Graph Component agar lebih rapi?
-        # Untuk sekarang biarkan di sini agar logic flow tidak berubah drastis
         current = data["current"]
         current_time = time.time()
         
@@ -218,9 +219,6 @@ class KartelMainWindow(QWidget):
     # === STARTUP & CLEANUP ===
     
     def refresh_display_data(self):
-        """Polling method untuk update data jika diperlukan"""
-        # Cek koneksi via controller
-        # self.controller.mqtt_service.connect() # (Opsional, sudah ada auto connect di service)
         pass
 
     def force_sync_current_profile(self):
@@ -249,13 +247,16 @@ class KartelMainWindow(QWidget):
         event.accept()
 
     def set_stylesheet(self):
-        path = os.path.join(ASSET_DIR, 'style', 'styles.qss')
+        # Gunakan resource_path untuk Stylesheet ---
+        path = resource_path(os.path.join(ASSET_DIR, 'style', 'styles.qss'))
+        
         if os.path.exists(path):
             with open(path, 'r') as f:
                 self.setStyleSheet(f.read())
     
     def load_custom_fonts(self):
-        # Implementasi load font sederhana
-        font_path = os.path.join(ASSET_DIR, 'fonts', 'Manrope-Regular.ttf')
+        # Gunakan resource_path untuk Font ---
+        font_path = resource_path(os.path.join(ASSET_DIR, 'fonts', 'Manrope-Regular.ttf'))
+        
         if os.path.exists(font_path):
             QFontDatabase.addApplicationFont(font_path)
