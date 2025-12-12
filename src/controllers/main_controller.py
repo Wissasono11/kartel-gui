@@ -100,7 +100,6 @@ class MainController(QObject):
     # PUBLIC METHODS (Dipanggil oleh View/EventHandlers)
     # =========================================================================
 
-    # --- [FIX: Method ini yang sebelumnya hilang!] ---
     def get_historical_data(self):
         """Mengambil data historis dari service untuk grafik"""
         return self.mqtt_service.get_historical_data()

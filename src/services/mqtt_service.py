@@ -182,7 +182,10 @@ class MqttService(QObject):
             if key in data:
                 try:
                     val = float(data[key])
-                    self.current_data[key] = val
+                    if key == "relay_interval":
+                        self.device_settings["relay_interval"] = int(val)
+                    else:
+                        self.current_data[key] = val
                     updated = True
                     if key == "SET":
                         self.target_temperature = val
@@ -204,39 +207,37 @@ class MqttService(QObject):
 
     def _update_motor_logic(self):
         rotate_val = self.current_data.get("rotate_on", 0)
-        is_rotating = rotate_val != 0
-        if is_rotating and not self.last_motor_state:
-            self.motor_start_time = time.time()
-            self.motor_remaining_time = self.motor_duration
-        elif is_rotating and self.motor_start_time:
-            elapsed = time.time() - self.motor_start_time
-            self.motor_remaining_time = max(0, self.motor_duration - int(elapsed))
-        elif not is_rotating:
-            self.motor_remaining_time = 0
-            self.motor_start_time = None
-        self.last_motor_state = is_rotating
-        self.status_updated.emit(self.get_device_status())
+        is_rotating=rotate_val !=0
+        self.motor_remaining_time=rotate_val
 
     def _reset_motor_state(self):
         self.last_motor_state = False
         self.motor_remaining_time = 0
 
     def get_device_status(self) -> Dict[str, Any]:
-        rotate_val = self.current_data.get("rotate_on", 0)
-        if rotate_val != 0:
-            is_rotating = True
-            status_text = "Berputar"
-            # Format H:M:S untuk countdown aktif
-            hours = self.motor_remaining_time // 3600
-            minutes = (self.motor_remaining_time % 3600) // 60
-            seconds = self.motor_remaining_time % 60
-            timer_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        else:
+        rotate_val = self.current_data.get("rotate_on")
+        
+        if rotate_val > 5:
             is_rotating = False
             status_text = "Idle"
+
+            # Format H:M:S untuk countdown aktif
+            hours = int(self.motor_remaining_time // 3600)
+            minutes = int((self.motor_remaining_time % 3600)) // 60
+            seconds = int(self.motor_remaining_time % 60)
+            timer_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            is_rotating = True
+            status_text = "Berputar"
+            
             # Format H:M:S untuk interval (idle)
             interval_hours = self.device_settings["relay_interval"]
             timer_text = f"{interval_hours:02d}:00:00"
+
+            hours = int(self.motor_remaining_time // 3600)
+            minutes = int((self.motor_remaining_time % 3600)) // 60
+            seconds = int(self.motor_remaining_time % 60)
+            timer_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
         current_day = self._calculate_day()
         total_days = self.device_settings.get("total_days", 21)

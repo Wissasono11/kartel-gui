@@ -129,7 +129,7 @@ class DashboardEventHandlers:
                 default_humidity = DEFAULT_SETTINGS['target_humidity']
                 self.update_profile_indicator(temp, default_humidity)
         except ValueError:
-            pass # Jangan lakukan apa-apa jika input belum valid
+            pass 
 
     # =========================================================================
     # 2. HELPER PROFILE MATCHING
